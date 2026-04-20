@@ -53,19 +53,20 @@ class OpenAIModelAdapter:
             timeout=120.0,
         )
 
-        msg_tokens = sum(len(m.content.split()) for m in messages)  # 粗略 token 估算
-        logger.info(f"📋 调用模型 | model={self.model} | 消息数={len(messages)} | 粗略tokens≈{msg_tokens}")
+        msg_tokens = sum(len(m.content.split()) for m in messages)
+        logger.info(f"Calling model | model={self.model} | messages={len(messages)} | approx_tokens={msg_tokens}")
 
         t0 = time.perf_counter()
         try:
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": message.role, "content": message.content} for message in messages],
-                temperature=self.temperature
+                temperature=self.temperature,
+                max_tokens=8192
             )
         except APIError as exc:
             elapsed = time.perf_counter() - t0
-            logger.error(f"❌ 模型调用失败 | 耗时={elapsed:.1f}s | 错误={exc}")
+            logger.error(f"Model call failed | elapsed={elapsed:.1f}s | error={exc}")
             raise RuntimeError(f"Model request failed: {exc}") from exc
 
         elapsed = time.perf_counter() - t0
@@ -76,11 +77,10 @@ class OpenAIModelAdapter:
         if not isinstance(content, str):
             raise RuntimeError("Model response missing text content.")
 
-        # 打印响应摘要（截断到 200 字符）
         preview = content[:200].replace("\n", " ")
         if len(content) > 200:
             preview += "..."
-        logger.info(f"✅ 模型响应 | 耗时={elapsed:.1f}s | 响应长度={len(content)}字符 | 预览={preview}")
+        logger.info(f"Model response received | elapsed={elapsed:.1f}s | length={len(content)}chars | preview={preview}")
         return content
 
 

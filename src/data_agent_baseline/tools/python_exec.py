@@ -10,6 +10,10 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+# Force UTF-8 encoding for all subprocess stdout/stderr
+_SUB_STDOUT_ENCODING = "utf-8"
+_SUB_STDERR_ENCODING = "utf-8"
+
 
 @contextlib.contextmanager
 def _capture_process_streams(stdout_path: Path, stderr_path: Path):
@@ -28,8 +32,9 @@ def _capture_process_streams(stdout_path: Path, stderr_path: Path):
             os.dup2(stdout_file.fileno(), 1)
             os.dup2(stderr_file.fileno(), 2)
 
-            stdout_encoding = getattr(original_stdout, "encoding", None) or "utf-8"
-            stderr_encoding = getattr(original_stderr, "encoding", None) or "utf-8"
+            # Always use UTF-8 to handle Unicode characters (e.g., 'Räikkönen')
+            stdout_encoding = _SUB_STDOUT_ENCODING
+            stderr_encoding = _SUB_STDERR_ENCODING
 
             sys.stdout = io.TextIOWrapper(
                 os.fdopen(os.dup(1), "wb"),

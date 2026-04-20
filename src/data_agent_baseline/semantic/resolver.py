@@ -50,7 +50,6 @@ def resolve_business_term(
     expected_types: list[str] | None = None,
     top_k: int = 5,
 ) -> dict[str, Any]:
-    normalized = term.strip().lower()
     matches: list[dict[str, Any]] = []
 
     def add_match(
@@ -91,6 +90,10 @@ def resolve_business_term(
 
     matches.sort(key=lambda item: (-item["score"], item["name"]))
     top_matches = matches[:top_k]
+    suggested_followups: list[str] = []
+    for rule in catalog.knowledge_contract.ambiguity_rules:
+        if str(rule.get("term", "")).strip().lower() == term.strip().lower():
+            suggested_followups.append(str(rule.get("rule", "")).strip())
     return {
         "matches": top_matches,
         "ambiguities": (
@@ -99,7 +102,9 @@ def resolve_business_term(
             else []
         ),
         "suggested_followups": (
-            []
+            suggested_followups
+            if suggested_followups
+            else []
             if len(matches) <= 1
             else ["Use read_doc or inspect_sqlite_schema to confirm the intended meaning."]
         ),

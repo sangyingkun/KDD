@@ -22,7 +22,7 @@ logger = logging.getLogger("dabench.react")
 
 @dataclass(frozen=True, slots=True)
 class ReActAgentConfig:
-    max_steps: int = 16
+    max_steps: int = 20
 
 
 def _strip_json_fence(raw_response: str) -> str:
@@ -68,51 +68,6 @@ def parse_model_step(raw_response: str) -> ModelStep:
         action_input=action_input,
         raw_response=raw_response,
     )
-def _bootstrap_semantic_context(self, task: PublicTask, state: AgentRuntimeState) -> None:
-    bootstrap_actions = (
-        ("describe_semantics", {"max_items_per_section": 8, "include_evidence": True}),
-        ("plan_semantic_query", {"question": task.question}),
-    )
-    for action, action_input in bootstrap_actions:
-        try:
-            tool_result = self.tools.execute(task, action, action_input)
-        except Exception as exc:
-            state.steps.append(
-                StepRecord(
-                    step_index=len(state.steps) + 1,
-                    thought="Semantic bootstrap failed.",
-                    action=action,
-                    action_input=action_input,
-                    raw_response=json.dumps({
-                        "thought": "Semantic bootstrap failed.",
-                        "action": action,
-                        "action_input": action_input,
-                    }),
-                    observation={"ok": False, "tool": action, "error": str(exc)},
-                    ok=False,
-                )
-            )
-            continue
-        state.steps.append(
-            StepRecord(
-                step_index=len(state.steps) + 1,
-                thought="Bootstrap semantic context before free-form exploration.",
-                action=action,
-                action_input=action_input,
-                raw_response=json.dumps({
-                    "thought": "Bootstrap semantic context before free-form exploration.",
-                    "action": action,
-                    "action_input": action_input,
-                }),
-                observation={
-                    "ok": tool_result.ok,
-                    "tool": action,
-                    "content": tool_result.content,
-                },
-                ok=tool_result.ok,
-            )
-        )
-
 
 
 class ReActAgent:
@@ -128,6 +83,51 @@ class ReActAgent:
         self.tools = tools
         self.config = config or ReActAgentConfig()
         self.system_prompt = system_prompt or REACT_SYSTEM_PROMPT
+
+    def _bootstrap_semantic_context(self, task: PublicTask, state: AgentRuntimeState) -> None:
+        bootstrap_actions = (
+            ("describe_semantics", {"max_items_per_section": 8, "include_evidence": True}),
+            ("plan_semantic_query", {"question": task.question}),
+        )
+        for action, action_input in bootstrap_actions:
+            try:
+                tool_result = self.tools.execute(task, action, action_input)
+            except Exception as exc:
+                state.steps.append(
+                    StepRecord(
+                        step_index=len(state.steps) + 1,
+                        thought="Semantic bootstrap failed.",
+                        action=action,
+                        action_input=action_input,
+                        raw_response=json.dumps({
+                            "thought": "Semantic bootstrap failed.",
+                            "action": action,
+                            "action_input": action_input,
+                        }),
+                        observation={"ok": False, "tool": action, "error": str(exc)},
+                        ok=False,
+                    )
+                )
+                continue
+            state.steps.append(
+                StepRecord(
+                    step_index=len(state.steps) + 1,
+                    thought="Bootstrap semantic context before free-form exploration.",
+                    action=action,
+                    action_input=action_input,
+                    raw_response=json.dumps({
+                        "thought": "Bootstrap semantic context before free-form exploration.",
+                        "action": action,
+                        "action_input": action_input,
+                    }),
+                    observation={
+                        "ok": tool_result.ok,
+                        "tool": action,
+                        "content": tool_result.content,
+                    },
+                    ok=tool_result.ok,
+                )
+            )
 
     def _build_messages(self, task: PublicTask, state: AgentRuntimeState) -> list[ModelMessage]:
         system_content = build_system_prompt(
@@ -148,18 +148,18 @@ class ReActAgent:
         self._bootstrap_semantic_context(task, state)
         run_start = time.perf_counter()
         logger.info(f"{'='*60}")
-        logger.info(f"🚀 开始执行任务 | task_id={task.task_id} | difficulty={task.difficulty} | max_steps={self.config.max_steps}")
-        logger.info(f"📝 问题: {task.question[:150]}")
+        logger.info(f"Task started | task_id={task.task_id} | difficulty={task.difficulty} | max_steps={self.config.max_steps}")
+        logger.info(f"Question: {task.question[:150]}")
         logger.info(f"{'='*60}")
 
         for step_index in range(1, self.config.max_steps + 1):
             step_start = time.perf_counter()
-            logger.info(f"\n🔄 Step {step_index}/{self.config.max_steps} 开始...")
+            logger.info(f"\nStep {step_index}/{self.config.max_steps} starting...")
             raw_response = self.model.complete(self._build_messages(task, state))
             try:
                 model_step = parse_model_step(raw_response)
-                logger.info(f"💭 Thought: {model_step.thought[:200]}")
-                logger.info(f"🔧 Action: {model_step.action} | input={json.dumps(model_step.action_input, ensure_ascii=False)[:300]}")
+                logger.info(f"Thought: {model_step.thought[:200]}")
+                logger.info(f"Action: {model_step.action} | input={json.dumps(model_step.action_input, ensure_ascii=False)[:300]}")
 
                 tool_result = self.tools.execute(task, model_step.action, model_step.action_input)
 
@@ -168,9 +168,9 @@ class ReActAgent:
                     result_preview = str(tool_result.content)[:300]
                     if len(str(tool_result.content)) > 300:
                         result_preview += "..."
-                    logger.info(f"📋 Tool结果 (OK) | 耗时={step_elapsed:.1f}s | 预览={result_preview}")
+                    logger.info(f"Tool result (OK) | elapsed={step_elapsed:.1f}s | preview={result_preview}")
                 else:
-                    logger.warning(f"⚠️ Tool执行失败 | 耗时={step_elapsed:.1f}s | 错误={str(tool_result.content)[:200]}")
+                    logger.warning(f"Tool execution failed | elapsed={step_elapsed:.1f}s | error={str(tool_result.content)[:200]}")
 
                 observation = {
                     "ok": tool_result.ok,
@@ -189,11 +189,11 @@ class ReActAgent:
                 state.steps.append(step_record)
                 if tool_result.is_terminal:
                     state.answer = tool_result.answer
-                    logger.info(f"\n🏁 任务完成 | 共 {step_index} 步 | 总耗时={time.perf_counter() - run_start:.1f}s")
+                    logger.info(f"\nTask completed | total_steps={step_index} | total_elapsed={time.perf_counter() - run_start:.1f}s")
                     break
             except Exception as exc:
                 step_elapsed = time.perf_counter() - step_start
-                logger.error(f"❌ Step {step_index} 异常 | 耗时={step_elapsed:.1f}s | 错误={exc}")
+                logger.error(f"Step {step_index} exception | elapsed={step_elapsed:.1f}s | error={exc}")
                 observation = {
                     "ok": False,
                     "error": str(exc),
@@ -212,7 +212,7 @@ class ReActAgent:
 
         if state.answer is None and state.failure_reason is None:
             state.failure_reason = "Agent did not submit an answer within max_steps."
-            logger.warning(f"⚠️ 达到最大步数 {self.config.max_steps}，未提交答案 | 总耗时={time.perf_counter() - run_start:.1f}s")
+            logger.warning(f"Max steps {self.config.max_steps} reached without answer | total_elapsed={time.perf_counter() - run_start:.1f}s")
 
         return AgentRunResult(
             task_id=task.task_id,

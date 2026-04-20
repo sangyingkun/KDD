@@ -16,11 +16,9 @@ KDD Cup 2026 数据智能体基线代码。
 ## 快速开始
 
 ```bash
-# 安装依赖
-pip install -e .
 
 # 运行基线
-python -m data_agent_baseline --config configs/react_baseline.yaml
+uv run dabench run-benchmark --config configs/react_baseline.example.yaml
 ```
 
 ## 目录结构

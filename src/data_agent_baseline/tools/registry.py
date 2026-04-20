@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from data_agent_baseline.benchmark.schema import AnswerTable, PublicTask
+from data_agent_baseline.config import PROJECT_ROOT
+from data_agent_baseline.semantic.builder import build_base_semantic_catalog
+from data_agent_baseline.semantic.catalog import SemanticCatalog
+from data_agent_baseline.semantic.overlay import apply_overlay, load_overlay_file
+from data_agent_baseline.semantic.planner import plan_semantic_query
+from data_agent_baseline.semantic.resolver import resolve_business_term
+from data_agent_baseline.semantic.verifier import validate_answer_semantics
 from data_agent_baseline.tools.filesystem import (
     list_context_tree,
     read_csv_preview,
@@ -13,15 +20,6 @@ from data_agent_baseline.tools.filesystem import (
 )
 from data_agent_baseline.tools.python_exec import execute_python_code
 from data_agent_baseline.tools.sqlite import execute_read_only_sql, inspect_sqlite_schema
-
-from data_agent_baseline.config import PROJECT_ROOT
-from data_agent_baseline.semantic.builder import build_base_semantic_catalog
-from data_agent_baseline.semantic.catalog import SemanticCatalog
-from data_agent_baseline.semantic.overlay import apply_overlay, load_overlay_file
-from data_agent_baseline.semantic.planner import plan_semantic_query
-from data_agent_baseline.semantic.resolver import resolve_business_term
-from data_agent_baseline.semantic.verifier import validate_answer_semantics
-
 
 EXECUTE_PYTHON_TIMEOUT_SECONDS = 30
 
@@ -41,52 +39,8 @@ class ToolExecutionResult:
     answer: AnswerTable | None = None
 
 
-ToolHandler = Callable[[PublicTask, dict[str, Any]], ToolExecutionResult]
+ToolHandler = Callable[["ToolRegistry", PublicTask, dict[str, Any]], ToolExecutionResult]
 
-
-def _list_context(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    max_depth = int(action_input.get("max_depth", 4))
-    return ToolExecutionResult(ok=True, content=list_context_tree(task, max_depth=max_depth))
-
-
-def _read_csv(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    path = str(action_input["path"])
-    max_rows = int(action_input.get("max_rows", 20))
-    return ToolExecutionResult(ok=True, content=read_csv_preview(task, path, max_rows=max_rows))
-
-
-def _read_json(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    path = str(action_input["path"])
-    max_chars = int(action_input.get("max_chars", 4000))
-    return ToolExecutionResult(ok=True, content=read_json_preview(task, path, max_chars=max_chars))
-
-
-def _read_doc(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    path = str(action_input["path"])
-    max_chars = int(action_input.get("max_chars", 4000))
-    return ToolExecutionResult(ok=True, content=read_doc_preview(task, path, max_chars=max_chars))
-
-
-def _inspect_sqlite_schema(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    path = resolve_context_path(task, str(action_input["path"]))
-    return ToolExecutionResult(ok=True, content=inspect_sqlite_schema(path))
-
-
-def _execute_context_sql(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    path = resolve_context_path(task, str(action_input["path"]))
-    sql = str(action_input["sql"])
-    limit = int(action_input.get("limit", 200))
-    return ToolExecutionResult(ok=True, content=execute_read_only_sql(path, sql, limit=limit))
-
-
-def _execute_python(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    code = str(action_input["code"])
-    content = execute_python_code(
-        context_root=task.context_dir,
-        code=code,
-        timeout_seconds=EXECUTE_PYTHON_TIMEOUT_SECONDS,
-    )
-    return ToolExecutionResult(ok=bool(content.get("success")), content=content)
 
 def _build_semantic_catalog(task: PublicTask) -> SemanticCatalog:
     base_catalog = build_base_semantic_catalog(task)
@@ -99,7 +53,52 @@ def _build_semantic_catalog(task: PublicTask) -> SemanticCatalog:
     return apply_overlay(apply_overlay(base_catalog, global_overlay), task_overlay)
 
 
-def _answer(_: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+def _list_context(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    max_depth = int(action_input.get("max_depth", 4))
+    return ToolExecutionResult(ok=True, content=list_context_tree(task, max_depth=max_depth))
+
+
+def _read_csv(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    path = str(action_input["path"])
+    max_rows = int(action_input.get("max_rows", 20))
+    return ToolExecutionResult(ok=True, content=read_csv_preview(task, path, max_rows=max_rows))
+
+
+def _read_json(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    path = str(action_input["path"])
+    max_chars = int(action_input.get("max_chars", 4000))
+    return ToolExecutionResult(ok=True, content=read_json_preview(task, path, max_chars=max_chars))
+
+
+def _read_doc(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    path = str(action_input["path"])
+    max_chars = int(action_input.get("max_chars", 4000))
+    return ToolExecutionResult(ok=True, content=read_doc_preview(task, path, max_chars=max_chars))
+
+
+def _inspect_sqlite_schema(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    path = resolve_context_path(task, str(action_input["path"]))
+    return ToolExecutionResult(ok=True, content=inspect_sqlite_schema(path))
+
+
+def _execute_context_sql(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    path = resolve_context_path(task, str(action_input["path"]))
+    sql = str(action_input["sql"])
+    limit = int(action_input.get("limit", 200))
+    return ToolExecutionResult(ok=True, content=execute_read_only_sql(path, sql, limit=limit))
+
+
+def _execute_python(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    code = str(action_input["code"])
+    content = execute_python_code(
+        context_root=task.context_dir,
+        code=code,
+        timeout_seconds=EXECUTE_PYTHON_TIMEOUT_SECONDS,
+    )
+    return ToolExecutionResult(ok=bool(content.get("success")), content=content)
+
+
+def _answer(registry: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
     columns = action_input.get("columns")
     rows = action_input.get("rows")
     if not isinstance(columns, list) or not columns or not all(isinstance(item, str) for item in columns):
@@ -115,6 +114,20 @@ def _answer(_: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
             raise ValueError("Each answer row must match the number of columns.")
         normalized_rows.append(list(row))
 
+    validation = validate_answer_semantics(
+        registry.get_semantic_catalog(task),
+        question=str(action_input.get("question", task.question)),
+        columns=list(columns),
+        rows=normalized_rows,
+        derivation_summary=action_input.get("derivation_summary"),
+        used_entities=list(action_input.get("used_entities", [])),
+        used_measures=list(action_input.get("used_measures", [])),
+        used_metrics=list(action_input.get("used_metrics", [])),
+        used_relations=list(action_input.get("used_relations", [])),
+    )
+    if not validation["valid"]:
+        raise ValueError("; ".join(validation["errors"]))
+
     answer = AnswerTable(columns=list(columns), rows=normalized_rows)
     return ToolExecutionResult(
         ok=True,
@@ -128,8 +141,8 @@ def _answer(_: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
     )
 
 
-def _describe_semantics(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    catalog = _build_semantic_catalog(task)
+def _describe_semantics(registry: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    catalog = registry.get_semantic_catalog(task)
     return ToolExecutionResult(
         ok=True,
         content=catalog.summary(
@@ -139,8 +152,8 @@ def _describe_semantics(task: PublicTask, action_input: dict[str, Any]) -> ToolE
     )
 
 
-def _resolve_business_term(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    catalog = _build_semantic_catalog(task)
+def _resolve_business_term(registry: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    catalog = registry.get_semantic_catalog(task)
     return ToolExecutionResult(
         ok=True,
         content=resolve_business_term(
@@ -152,21 +165,24 @@ def _resolve_business_term(task: PublicTask, action_input: dict[str, Any]) -> To
     )
 
 
-def _plan_semantic_query(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    catalog = _build_semantic_catalog(task)
+def _plan_semantic_query(registry: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    question = str(action_input.get("question", task.question))
+    target_metric = action_input.get("target_metric")
+    target_entity = action_input.get("target_entity")
+    cached_plan = registry.get_semantic_plan(
+        task,
+        question=question,
+        target_metric=target_metric,
+        target_entity=target_entity,
+    )
     return ToolExecutionResult(
         ok=True,
-        content=plan_semantic_query(
-            catalog,
-            str(action_input.get("question", task.question)),
-            target_metric=action_input.get("target_metric"),
-            target_entity=action_input.get("target_entity"),
-        ),
+        content=cached_plan,
     )
 
 
-def _validate_answer_semantics(task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
-    catalog = _build_semantic_catalog(task)
+def _validate_answer_semantics(registry: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
+    catalog = registry.get_semantic_catalog(task)
     return ToolExecutionResult(
         ok=True,
         content=validate_answer_semantics(
@@ -183,11 +199,12 @@ def _validate_answer_semantics(task: PublicTask, action_input: dict[str, Any]) -
     )
 
 
-
 @dataclass(slots=True)
 class ToolRegistry:
     specs: dict[str, ToolSpec]
     handlers: dict[str, ToolHandler]
+    _semantic_catalog_cache: dict[str, SemanticCatalog] = field(default_factory=dict)
+    _semantic_plan_cache: dict[tuple[str, str, str | None, str | None], dict[str, Any]] = field(default_factory=dict)
 
     def describe_for_prompt(self) -> str:
         lines = []
@@ -197,10 +214,39 @@ class ToolRegistry:
             lines.append(f"  input_schema: {spec.input_schema}")
         return "\n".join(lines)
 
+    def get_semantic_catalog(self, task: PublicTask) -> SemanticCatalog:
+        cached = self._semantic_catalog_cache.get(task.task_id)
+        if cached is not None:
+            return cached
+        catalog = _build_semantic_catalog(task)
+        self._semantic_catalog_cache[task.task_id] = catalog
+        return catalog
+
+    def get_semantic_plan(
+        self,
+        task: PublicTask,
+        *,
+        question: str,
+        target_metric: str | None,
+        target_entity: str | None,
+    ) -> dict[str, Any]:
+        cache_key = (task.task_id, question, target_metric, target_entity)
+        cached = self._semantic_plan_cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
+        plan = plan_semantic_query(
+            self.get_semantic_catalog(task),
+            question,
+            target_metric=target_metric,
+            target_entity=target_entity,
+        )
+        self._semantic_plan_cache[cache_key] = dict(plan)
+        return dict(plan)
+
     def execute(self, task: PublicTask, action: str, action_input: dict[str, Any]) -> ToolExecutionResult:
         if action not in self.handlers:
             raise KeyError(f"Unknown tool: {action}")
-        return self.handlers[action](task, action_input)
+        return self.handlers[action](self, task, action_input)
 
 
 def create_default_tool_registry() -> ToolRegistry:
@@ -212,6 +258,11 @@ def create_default_tool_registry() -> ToolRegistry:
                 "columns": ["column_name"],
                 "rows": [["value_1"]],
             },
+        ),
+        "describe_semantics": ToolSpec(
+            name="describe_semantics",
+            description="Describe the task-level semantic catalog, including entities, relations, dimensions, measures, metrics, and warnings.",
+            input_schema={"include_evidence": False, "max_items_per_section": 10},
         ),
         "execute_context_sql": ToolSpec(
             name="execute_context_sql",
@@ -239,6 +290,11 @@ def create_default_tool_registry() -> ToolRegistry:
             description="List files and directories available under context.",
             input_schema={"max_depth": 4},
         ),
+        "plan_semantic_query": ToolSpec(
+            name="plan_semantic_query",
+            description="Suggest an execution path, required sources, and output grain for a question using the semantic catalog.",
+            input_schema={"question": "What is total order amount by region?"},
+        ),
         "read_csv": ToolSpec(
             name="read_csv",
             description="Read a preview of a CSV file inside context.",
@@ -254,16 +310,6 @@ def create_default_tool_registry() -> ToolRegistry:
             description="Read a preview of a JSON file inside context.",
             input_schema={"path": "relative/path/to/file.json", "max_chars": 4000},
         ),
-        "describe_semantics": ToolSpec(
-            name="describe_semantics",
-            description="Describe the task-level semantic catalog, including entities, relations, dimensions, measures, metrics, and warnings.",
-            input_schema={"include_evidence": False, "max_items_per_section": 10},
-        ),
-        "plan_semantic_query": ToolSpec(
-            name="plan_semantic_query",
-            description="Suggest an execution path, required sources, and output grain for a question using the semantic catalog.",
-            input_schema={"question": "What is total order amount by region?"},
-        ),
         "resolve_business_term": ToolSpec(
             name="resolve_business_term",
             description="Resolve a business term against entities, dimensions, measures, and metrics in the semantic catalog.",
@@ -277,15 +323,15 @@ def create_default_tool_registry() -> ToolRegistry:
     }
     handlers = {
         "answer": _answer,
+        "describe_semantics": _describe_semantics,
         "execute_context_sql": _execute_context_sql,
         "execute_python": _execute_python,
         "inspect_sqlite_schema": _inspect_sqlite_schema,
         "list_context": _list_context,
+        "plan_semantic_query": _plan_semantic_query,
         "read_csv": _read_csv,
         "read_doc": _read_doc,
         "read_json": _read_json,
-        "describe_semantics": _describe_semantics,
-        "plan_semantic_query": _plan_semantic_query,
         "resolve_business_term": _resolve_business_term,
         "validate_answer_semantics": _validate_answer_semantics,
     }

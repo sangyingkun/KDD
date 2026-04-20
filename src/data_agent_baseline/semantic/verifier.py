@@ -4,7 +4,11 @@ import re
 from typing import Any
 
 from data_agent_baseline.semantic.catalog import SemanticCatalog
-from data_agent_baseline.semantic.planner import _extract_value_links, _find_join_path
+from data_agent_baseline.semantic.planner import (
+    _extract_value_links,
+    _find_join_path,
+    _infer_expected_output_columns,
+)
 
 
 def validate_answer_semantics(
@@ -31,6 +35,16 @@ def validate_answer_semantics(
         errors.append("Output grain appears too detailed for a total-only question.")
     else:
         checks.append("Output grain is plausible for the question.")
+
+    expected_output_columns = _infer_expected_output_columns(catalog, question)
+    normalized_columns = [re.sub(r"\s+", "_", column.strip().lower()) for column in columns]
+    if expected_output_columns and normalized_columns != expected_output_columns:
+        errors.append(
+            "Output columns do not match the knowledge-derived semantic format: expected "
+            + ", ".join(expected_output_columns)
+        )
+    else:
+        checks.append("Output columns are plausible for the question.")
 
     if any(
         relation.cardinality in {"unknown", "many_to_many"} for relation in catalog.relations
@@ -73,6 +87,24 @@ def validate_answer_semantics(
         )
     else:
         checks.append("No obvious linked filter-value omission was detected.")
+
+    knowledge_convention_gaps: list[str] = []
+    for rule in catalog.knowledge_contract.constraint_rules:
+        field_name = str(rule.get("field", "")).strip()
+        allowed_values = [str(value).lower() for value in rule.get("allowed_values", []) if str(value)]
+        if field_name.lower() != "admission" or not {"+", "-"}.issubset(set(allowed_values)):
+            continue
+        if any(token in lower_question for token in ("inpatient", "outpatient", "admission")) and not any(
+            value in normalized_derivation for value in ("+", "-")
+        ):
+            knowledge_convention_gaps.append("Admission should use '+' and '-' values from the knowledge guide.")
+    if knowledge_convention_gaps:
+        warnings.append(
+            "Derivation may ignore knowledge-defined value conventions: "
+            + "; ".join(knowledge_convention_gaps)
+        )
+    else:
+        checks.append("No obvious knowledge-defined value convention omission was detected.")
 
     if any(keyword in lower_question for keyword in ("according to", "policy", "definition")) and not any(
         keyword in normalized_derivation for keyword in ("policy", "document", "doc", "read_doc", "definition")

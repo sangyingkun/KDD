@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import multiprocessing
+import os
 import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -40,7 +41,7 @@ class TaskRunArtifacts:
 
 
 def create_run_id() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + f"_{os.getpid()}"
 
 
 def resolve_run_id(run_id: str | None = None) -> str:
@@ -114,6 +115,13 @@ def _run_single_task_core(
 
 
 def _run_single_task_in_subprocess(task_id: str, config: AppConfig, queue: multiprocessing.Queue[Any]) -> None:
+    # Suppress stdout/stderr in subprocess to avoid polluting the main process's
+    # Rich console / progress bar output on Windows (where subprocess auto-detects
+    # GBK terminal encoding and may write raw bytes that corrupt ANSI sequences).
+    # Errors are communicated via the queue, so nothing is lost.
+    if sys.platform == "win32":
+        sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="ignore")
+        sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="ignore")
     try:
         queue.put(
             {
@@ -202,8 +210,8 @@ def run_single_task(
 ) -> TaskRunArtifacts:
     started_at = perf_counter()
     if model is None and tools is None:
-        # Windows 下 multiprocessing + OpenAI 存在兼容性问题，
-        # 改为主进程直接运行；Linux/macOS 保持子进程超时机制
+        # Windows multiprocessing + OpenAI compatibility issue
+        # Run in main process on Windows; use subprocess timeout on Linux/macOS
         if sys.platform == "win32":
             model = build_model_adapter(config)
             tools = create_default_tool_registry()

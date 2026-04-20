@@ -87,6 +87,57 @@ class EvidenceSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class KnowledgeContract:
+    sections: dict[str, str] = field(default_factory=dict)
+    entity_field_rules: list[dict[str, Any]] = field(default_factory=list)
+    metric_rules: list[dict[str, Any]] = field(default_factory=list)
+    constraint_rules: list[dict[str, Any]] = field(default_factory=list)
+    example_rules: list[dict[str, Any]] = field(default_factory=list)
+    ambiguity_rules: list[dict[str, Any]] = field(default_factory=list)
+    output_constraints: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class PlannerQuestionSlot:
+    slot_type: str
+    phrase: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlannerBindingCandidate:
+    field_ref: str
+    entity: str
+    score: float
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlannerChosenBinding:
+    slot_type: str
+    phrase: str
+    field_ref: str
+    entity: str
+    resolved_value: str | int | float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PlannerJoinCandidate:
+    left_entity: str
+    right_entity: str
+    left_field: str
+    right_field: str
+    score: float
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlannerConflict:
+    phrase: str
+    candidates: list[str]
+    resolution: str
+
+
+@dataclass(frozen=True, slots=True)
 class SemanticCatalog:
     entities: list[EntitySpec] = field(default_factory=list)
     relations: list[RelationSpec] = field(default_factory=list)
@@ -94,6 +145,7 @@ class SemanticCatalog:
     measures: list[MeasureSpec] = field(default_factory=list)
     metrics: list[MetricSpec] = field(default_factory=list)
     evidence: list[EvidenceSpec] = field(default_factory=list)
+    knowledge_contract: KnowledgeContract = field(default_factory=KnowledgeContract)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -113,6 +165,7 @@ class SemanticCatalog:
             "dimensions": [asdict(spec) for spec in self.dimensions[:n]],
             "measures": [asdict(spec) for spec in self.measures[:n]],
             "metrics": [asdict(spec) for spec in self.metrics[:n]],
+            "knowledge_contract": asdict(self.knowledge_contract),
             "warnings": [],
         }
         if include_evidence:

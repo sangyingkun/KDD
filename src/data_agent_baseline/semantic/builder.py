@@ -13,6 +13,7 @@ from data_agent_baseline.semantic.catalog import (
     DimensionSpec,
     EntitySpec,
     EvidenceSpec,
+    KnowledgeContract,
     MeasureSpec,
     RelationKeyPair,
     RelationSpec,
@@ -25,6 +26,15 @@ _MEASURE_KEYWORDS = ("amount", "price", "cost", "revenue", "sales", "total")
 _TIME_KEYWORDS = ("date", "time", "at")
 _GEO_NAMES = {"region", "region_name", "country", "state"}
 _STATUS_NAMES = {"status"}
+_CATEGORY_NAMES = {"sex", "gender", "diagnosis", "disease"}
+_KNOWLEDGE_SECTION_NAMES = {
+    "1. introduction": "introduction",
+    "2. core entities & fields": "core_entities_fields",
+    "3. metric definitions": "metric_definitions",
+    "4. constraints & conventions": "constraints_conventions",
+    "5. exemplar use cases": "exemplar_use_cases",
+    "6. ambiguity resolution": "ambiguity_resolution",
+}
 
 
 def _camel_to_snake(value: str) -> str:
@@ -174,6 +184,32 @@ def _infer_dimension_spec(
             time_grain="day",
             aliases=[],
             confidence="medium",
+            provenance=provenance,
+            sample_values=list(sample_values or []),
+        )
+    if normalized in _CATEGORY_NAMES:
+        return DimensionSpec(
+            name=field_name,
+            entity=entity_name,
+            field_ref=field_ref,
+            data_type=data_type,
+            semantic_type="category",
+            time_grain=None,
+            aliases=[],
+            confidence="medium",
+            provenance=provenance,
+            sample_values=list(sample_values or []),
+        )
+    if data_type in {"str", "string"} and sample_values:
+        return DimensionSpec(
+            name=field_name,
+            entity=entity_name,
+            field_ref=field_ref,
+            data_type=data_type,
+            semantic_type="text",
+            time_grain=None,
+            aliases=[],
+            confidence="low",
             provenance=provenance,
             sample_values=list(sample_values or []),
         )
@@ -333,12 +369,172 @@ def _add_sqlite_catalog_entries(
         conn.close()
 
 
+def _extract_document_evidence(rel_path: str, text: str) -> list[EvidenceSpec]:
+    evidences: list[EvidenceSpec] = []
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    for line in lines:
+        line_lc = line.lower()
+        is_metric_like = "count" in line_lc or "rate" in line_lc
+        is_field_definition = line.startswith("- **") and ": " in line
+        is_usage_constraint = "always use both fields" in line_lc or "always use" in line_lc
+        if not (is_metric_like or is_field_definition or is_usage_constraint):
+            continue
+        evidences.append(
+            EvidenceSpec(
+                id=f"ev_{len(evidences) + 1}",
+                claim=line,
+                source_type="document",
+                source_file=rel_path,
+                location_hint="document line",
+                snippet=line[:240],
+                confidence="medium",
+                provenance="auto_doc",
+            )
+        )
+    if evidences:
+        return evidences
+
+    sentences = [
+        item.strip()
+        for item in re.split(r"(?<=[.!?])\s+", text)
+        if item.strip()
+    ]
+    if not sentences and text.strip():
+        sentences = [text.strip()]
+
+    for sentence in sentences:
+        sentence_lc = sentence.lower()
+        if "count" in sentence_lc or "rate" in sentence_lc:
+            evidences.append(
+                EvidenceSpec(
+                    id=f"ev_{len(evidences) + 1}",
+                    claim=sentence,
+                    source_type="document",
+                    source_file=rel_path,
+                    location_hint="document sentence",
+                    snippet=sentence[:240],
+                    confidence="medium",
+                    provenance="auto_doc",
+                )
+            )
+    return evidences
+
+
+def _parse_knowledge_sections(text: str) -> dict[str, str]:
+    sections: dict[str, list[str]] = {value: [] for value in _KNOWLEDGE_SECTION_NAMES.values()}
+    current_section: str | None = None
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip()
+        heading_match = re.match(r"^##\s+(.*)$", line.strip())
+        if heading_match is not None:
+            normalized_heading = heading_match.group(1).strip().lower()
+            current_section = _KNOWLEDGE_SECTION_NAMES.get(normalized_heading)
+            continue
+        if current_section is not None:
+            sections[current_section].append(line)
+    return {
+        key: "\n".join(line for line in values if line.strip()).strip()
+        for key, values in sections.items()
+        if any(line.strip() for line in values)
+    }
+
+
+def _extract_knowledge_contract(text: str) -> KnowledgeContract:
+    sections = _parse_knowledge_sections(text)
+    entity_field_rules: list[dict[str, Any]] = []
+    metric_rules: list[dict[str, Any]] = []
+    constraint_rules: list[dict[str, Any]] = []
+    example_rules: list[dict[str, Any]] = []
+    ambiguity_rules: list[dict[str, Any]] = []
+    output_constraints: list[dict[str, Any]] = []
+
+    for line in sections.get("core_entities_fields", "").splitlines():
+        field_match = re.match(r"^- \*\*([^*]+)\*\*:\s*(.+)$", line.strip())
+        if field_match is None:
+            continue
+        field_name = field_match.group(1).strip()
+        description = field_match.group(2).strip()
+        entity_field_rules.append({"field": field_name, "description": description})
+        if "full name" in description.lower():
+            fields = [
+                _normalize_identifier(part)
+                for part in field_name.split(",")
+                if _normalize_identifier(part)
+            ]
+            if len(fields) >= 2:
+                output_constraints.append({"concept": "full name", "fields": fields})
+
+    for line in sections.get("metric_definitions", "").splitlines():
+        metric_match = re.match(r"^- \*\*([^*]+)\*\*:\s*(.+)$", line.strip())
+        if metric_match is None:
+            continue
+        metric_rules.append(
+            {
+                "metric_name": metric_match.group(1).strip(),
+                "definition": metric_match.group(2).strip(),
+            }
+        )
+
+    for line in sections.get("constraints_conventions", "").splitlines():
+        constraint_match = re.match(r"^- \*\*([^*]+)\*\*:\s*(.+)$", line.strip())
+        if constraint_match is None:
+            continue
+        field_name = constraint_match.group(1).strip()
+        raw_text = constraint_match.group(2).strip()
+        allowed_values = re.findall(r"'([^']+)'", raw_text)
+        normalized_field = field_name
+        if "Admission" in raw_text and "Admission" not in field_name:
+            normalized_field = "Admission"
+        elif field_name.lower().startswith("admission"):
+            normalized_field = "Admission"
+        constraint_rules.append(
+            {
+                "field": normalized_field,
+                "allowed_values": allowed_values,
+                "raw_text": raw_text,
+            }
+        )
+
+    for line in sections.get("exemplar_use_cases", "").splitlines():
+        example_match = re.match(r"^- \*\*([^*]+)\*\*:\s*(.+)$", line.strip())
+        if example_match is None:
+            continue
+        example_rules.append(
+            {
+                "label": example_match.group(1).strip(),
+                "content": example_match.group(2).strip(),
+            }
+        )
+
+    for line in sections.get("ambiguity_resolution", "").splitlines():
+        ambiguity_match = re.match(r"^- \*\*([^*]+)\*\*:\s*(.+)$", line.strip())
+        if ambiguity_match is None:
+            continue
+        ambiguity_rules.append(
+            {
+                "term": ambiguity_match.group(1).strip(),
+                "rule": ambiguity_match.group(2).strip(),
+            }
+        )
+
+    return KnowledgeContract(
+        sections=sections,
+        entity_field_rules=entity_field_rules,
+        metric_rules=metric_rules,
+        constraint_rules=constraint_rules,
+        example_rules=example_rules,
+        ambiguity_rules=ambiguity_rules,
+        output_constraints=output_constraints,
+    )
+
+
 def build_base_semantic_catalog(task: PublicTask) -> SemanticCatalog:
     entities: list[EntitySpec] = []
     relations: list[RelationSpec] = []
     dimensions: list[DimensionSpec] = []
     measures: list[MeasureSpec] = []
     evidence: list[EvidenceSpec] = []
+    knowledge_contract = KnowledgeContract()
 
     # Keep small, local structures for deterministic relation inference without relying on path ordering.
     # Store both original column names and a lowercased lookup for case-insensitive key detection.
@@ -426,30 +622,21 @@ def build_base_semantic_catalog(task: PublicTask) -> SemanticCatalog:
                 text = path.read_text(errors="replace")
             except OSError:
                 continue
-
-            sentences = [
-                item.strip()
-                for item in re.split(r"(?<=[.!?])\s+", text)
-                if item.strip()
-            ]
-            if not sentences and text.strip():
-                sentences = [text.strip()]
-
-            for sentence in sentences:
-                sentence_lc = sentence.lower()
-                if "count" in sentence_lc or "rate" in sentence_lc:
-                    evidence.append(
-                        EvidenceSpec(
-                            id=f"ev_{len(evidence) + 1}",
-                            claim=sentence,
-                            source_type="document",
-                            source_file=rel_path,
-                            location_hint="document sentence",
-                            snippet=sentence[:240],
-                            confidence="medium",
-                            provenance="auto_doc",
-                        )
+            if rel_path == "knowledge.md":
+                knowledge_contract = _extract_knowledge_contract(text)
+            for item in _extract_document_evidence(rel_path, text):
+                evidence.append(
+                    EvidenceSpec(
+                        id=f"ev_{len(evidence) + 1}",
+                        claim=item.claim,
+                        source_type=item.source_type,
+                        source_file=item.source_file,
+                        location_hint=item.location_hint,
+                        snippet=item.snippet,
+                        confidence=item.confidence,
+                        provenance=item.provenance,
                     )
+                )
 
         elif suffix == ".json":
             try:
@@ -585,4 +772,5 @@ def build_base_semantic_catalog(task: PublicTask) -> SemanticCatalog:
         measures=measures,
         metrics=[],
         evidence=evidence,
+        knowledge_contract=knowledge_contract,
     )

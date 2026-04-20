@@ -66,9 +66,18 @@ def read_csv_preview(task: PublicTask, relative_path: str, *, max_rows: int = 20
     }
 
 
+def _read_text_with_encoding(path: Path) -> str:
+    """Read text file with encoding detection (UTF-8 first, then Latin-1)."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return path.read_text(encoding="latin-1")
+
+
 def read_json_preview(task: PublicTask, relative_path: str, *, max_chars: int = 4000) -> dict[str, object]:
     path = resolve_context_path(task, relative_path)
-    payload = json.loads(path.read_text())
+    text = _read_text_with_encoding(path)
+    payload = json.loads(text)
     preview = json.dumps(payload, ensure_ascii=False, indent=2)
     return {
         "path": relative_path,

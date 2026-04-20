@@ -1,3 +1,11 @@
+import sys
+import io
+
+# Set UTF-8 encoding for Windows compatibility
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 from pathlib import Path
 from time import perf_counter
 
@@ -29,18 +37,18 @@ ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
 ARTIFACT_RUNS_DIR = ARTIFACTS_DIR / "runs"
 
 app = typer.Typer(add_completion=False, no_args_is_help=False)
-console = Console()
+console = Console(force_terminal=True)
 
 
 def _setup_logging() -> None:
-    """配置日志：控制台(Rich) + 文件(artifacts/dabench.log)"""
+    """Setup logging: console (Rich) + file (artifacts/dabench.log)"""
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 控制台：带 Rich 格式的彩色输出
+    # Console: colored output with Rich
     rich_handler = RichHandler(console=console, show_time=True, show_path=False, markup=True)
     rich_handler.setLevel(logging.INFO)
 
-    # 文件：纯文本，方便回溯
+    # File: plain text for debugging
     log_file = ARTIFACTS_DIR / "dabench.log"
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
@@ -53,7 +61,7 @@ def _setup_logging() -> None:
     root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(rich_handler)
     root_logger.addHandler(file_handler)
-    # 同时让子 logger 也能输出
+    # Enable child loggers
     for name in ["dabench.model", "dabench.react", "dabench.runner", "dabench.tools"]:
         logging.getLogger(name).setLevel(logging.DEBUG)
 
@@ -169,8 +177,13 @@ def run_task_command(
     app_config = load_app_config(config)
     try:
         _, run_output_dir = create_run_output_dir(app_config.run.output_dir, run_id=app_config.run.run_id)
-    except (ValueError, FileExistsError) as exc:
-        raise typer.BadParameter(str(exc), param_hint="run.run_id") from exc
+    except Exception as exc:
+        # Encode error message to avoid GBK codec issues on Windows
+        msg = str(exc)
+        # Force ASCII to avoid typer encoding issues
+        msg = msg.encode('ascii', 'replace').decode('ascii')
+        console.print(f"[red]Error: {msg}[/red]")
+        raise typer.Exit(1) from exc
     artifacts = run_single_task(task_id=task_id, config=app_config, run_output_dir=run_output_dir)
 
     console.print(f"Run output: {run_output_dir}")
@@ -266,8 +279,13 @@ def run_benchmark_command(
                 limit=limit,
                 progress_callback=on_task_complete,
             )
-        except (ValueError, FileExistsError) as exc:
-            raise typer.BadParameter(str(exc), param_hint="run.run_id") from exc
+        except Exception as exc:
+            # Encode error message to avoid GBK codec issues on Windows
+            msg = str(exc)
+            # Force ASCII to avoid typer encoding issues
+            msg = msg.encode('ascii', 'replace').decode('ascii')
+            console.print(f"[red]Error: {msg}[/red]")
+            raise typer.Exit(1) from exc
         progress.update(
             progress_task_id,
             completed=task_total,
