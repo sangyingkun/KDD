@@ -3,15 +3,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from data_agent_baseline.semantic.catalog import (
-    PlannerBindingCandidate,
-    PlannerChosenBinding,
-    PlannerConflict,
-    PlannerJoinCandidate,
-    PlannerQuestionSlot,
-    SemanticCatalog,
-)
+from data_agent_baseline.semantic.catalog import SemanticCatalog
 from data_agent_baseline.semantic.builder import _normalize_identifier
+from data_agent_baseline.semantic.linker import SchemaLinkResult
 
 
 _AGGREGATION_KEYWORDS = ("total", "sum", "average", "avg", "rate", "count")
@@ -31,12 +25,6 @@ _DOC_EVIDENCE_KEYWORDS = (
 )
 
 _MAIN_ENTITY_PREFIXES = ("among the ", "among ", "of ", "for ", "in ")
-_SLOT_SYNONYMS = {
-    "ID": {"id", "identifier", "patient id"},
-    "sex": {"sex", "gender"},
-    "disease": {"disease", "diagnosis", "diagnosed with"},
-    "severe degree of thrombosis": {"severe degree of thrombosis", "severe thrombosis", "thrombosis"},
-}
 
 
 def _singularize_token(token: str) -> str:
@@ -214,147 +202,214 @@ def _extract_knowledge_hints(catalog: SemanticCatalog, question: str) -> list[st
     return hints
 
 
-def _extract_question_slots(question: str) -> list[PlannerQuestionSlot]:
-    lower_question = question.lower()
-    slots: list[PlannerQuestionSlot] = []
-    if "severe degree of thrombosis" in lower_question:
-        slots.append(PlannerQuestionSlot(slot_type="filter", phrase="severe degree of thrombosis"))
-    if "list their id" in lower_question or re.search(r"\btheir id\b", lower_question):
-        slots.append(PlannerQuestionSlot(slot_type="output", phrase="ID"))
-    if " sex" in f" {lower_question}" or " gender" in f" {lower_question}":
-        slots.append(PlannerQuestionSlot(slot_type="output", phrase="sex"))
-    if "disease" in lower_question or "diagnosed with" in lower_question:
-        slots.append(PlannerQuestionSlot(slot_type="output", phrase="disease"))
-    return slots
+def _source_item_lookup(catalog: SemanticCatalog) -> dict[str, dict[str, Any]]:
+    return {
+        item.item_id: {
+            "item_id": item.item_id,
+            "item_type": item.item_type,
+            "entity": item.entity,
+            "source_type": item.source_type,
+            "source_file": item.source_file,
+            "source_path": item.source_path,
+            "field_ref": item.field_ref,
+            "display_name": item.display_name,
+            "semantic_role": item.semantic_role,
+            "anchor_names": list(item.anchor_names),
+            "description": item.description,
+            "metadata": dict(item.metadata),
+        }
+        for item in catalog.source_items
+    }
 
 
-def _score_field_binding(
+def _anchor_lookup(catalog: SemanticCatalog) -> dict[str, dict[str, Any]]:
+    return {
+        anchor.anchor_name: {
+            "anchor_name": anchor.anchor_name,
+            "members": list(anchor.members),
+            "source_files": list(anchor.source_files),
+            "description": anchor.description,
+            "metadata": dict(anchor.metadata),
+        }
+        for anchor in catalog.cross_source_anchors
+    }
+
+
+def _collect_routing_candidates(link_result: SchemaLinkResult | None) -> list[dict[str, Any]]:
+    if link_result is None:
+        return []
+    candidates = []
+    for item in link_result.top_knowledge:
+        if str(item.get("doc_type", "")) in {"routing_rule", "anchor"}:
+            candidates.append(dict(item))
+    linker_debug = link_result.debug_view if isinstance(link_result.debug_view, dict) else {}
+    for item in linker_debug.get("top_routing", []):
+        if isinstance(item, dict):
+            candidates.append(dict(item))
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in candidates:
+        doc_id = str(item.get("doc_id", "")).strip()
+        if not doc_id or doc_id in seen:
+            continue
+        seen.add(doc_id)
+        deduped.append(item)
+    return deduped
+
+
+def _build_routing_plan(
     *,
-    phrase: str,
-    field_name: str,
-    entity_name: str,
-    question: str,
-) -> tuple[float, str]:
-    normalized_phrase = _normalize_identifier(phrase)
-    normalized_field = _normalize_identifier(field_name)
-    normalized_entity = _normalize_identifier(entity_name)
-    candidate_forms = _SLOT_SYNONYMS.get(phrase, {phrase.lower()})
-    normalized_forms = {_normalize_identifier(item) for item in candidate_forms}
-
-    if normalized_field in normalized_forms:
-        return 1.0, "exact field name match"
-    if any(form and form in normalized_field for form in normalized_forms):
-        return 0.9, "phrase contained in field name"
-    if normalized_phrase == "disease" and normalized_field == "diagnosis" and normalized_entity == "patient":
-        return 0.95, "patient diagnosis preferred for patient-level disease wording"
-    if normalized_phrase == "disease" and normalized_field == "diagnosis":
-        return 0.7, "diagnosis is a disease-like field"
-    if normalized_phrase == "severe_degree_of_thrombosis" and normalized_field == "thrombosis":
-        return 0.95, "thrombosis field matches severity phrase"
-    if normalized_phrase in normalized_entity:
-        return 0.6, "phrase aligned with entity name"
-    if normalized_phrase == "id" and normalized_field == "id" and normalized_entity == "patient":
-        return 0.9, "patient id preferred for patient-level listing"
-    if "diagnosed with" in question.lower() and normalized_field == "diagnosis" and normalized_entity == "patient":
-        return 0.95, "question asks for patient diagnosis"
-    return 0.0, "no strong match"
-
-
-def _build_binding_candidates(
     catalog: SemanticCatalog,
-    question: str,
-    slots: list[PlannerQuestionSlot],
-) -> dict[str, list[PlannerBindingCandidate]]:
-    candidates_by_phrase: dict[str, list[PlannerBindingCandidate]] = {}
-    for slot in slots:
-        candidates: list[PlannerBindingCandidate] = []
-        for dimension in catalog.dimensions:
-            score, reason = _score_field_binding(
-                phrase=slot.phrase,
-                field_name=dimension.name,
-                entity_name=dimension.entity,
-                question=question,
-            )
-            if score <= 0:
-                continue
-            candidates.append(
-                PlannerBindingCandidate(
-                    field_ref=dimension.field_ref,
-                    entity=dimension.entity,
-                    score=score,
-                    reason=reason,
-                )
-            )
-        candidates.sort(key=lambda item: (-item.score, item.field_ref))
-        candidates_by_phrase[slot.phrase] = candidates
-    return candidates_by_phrase
+    chosen_bindings: list[dict[str, Any]],
+    required_sources: list[str],
+    routing_candidates: list[dict[str, Any]],
+    recommended_join_path: list[dict[str, str]],
+    needs_doc_confirmation: bool,
+) -> list[dict[str, Any]]:
+    source_items = _source_item_lookup(catalog)
+    anchors = _anchor_lookup(catalog)
+    routing_plan: list[dict[str, Any]] = []
 
+    selected_source_items: list[dict[str, Any]] = []
+    selected_anchor_names: set[str] = set()
+    for binding in chosen_bindings:
+        doc_id = str(binding.get("doc_id", "")).strip()
+        if "source_item::" in doc_id:
+            item_id = doc_id.split("::", 2)[-1]
+            source_item = source_items.get(item_id)
+            if source_item is not None:
+                selected_source_items.append(source_item)
+                selected_anchor_names.update(source_item.get("anchor_names", []))
 
-def _choose_bindings(
-    slots: list[PlannerQuestionSlot],
-    candidates_by_phrase: dict[str, list[PlannerBindingCandidate]],
-) -> list[PlannerChosenBinding]:
-    chosen: list[PlannerChosenBinding] = []
-    for slot in slots:
-        candidates = candidates_by_phrase.get(slot.phrase, [])
-        if not candidates:
-            continue
-        top = candidates[0]
-        resolved_value: str | int | float | None = None
-        if slot.phrase == "severe degree of thrombosis":
-            resolved_value = 2
-        chosen.append(
-            PlannerChosenBinding(
-                slot_type=slot.slot_type,
-                phrase=slot.phrase,
-                field_ref=top.field_ref,
-                entity=top.entity,
-                resolved_value=resolved_value,
+    preferred_source_hints: list[str] = []
+    rule_constraints: list[dict[str, Any]] = []
+    for candidate in routing_candidates:
+        doc_type = str(candidate.get("doc_type", "")).strip()
+        metadata = dict(candidate.get("metadata", {}))
+        if doc_type == "routing_rule":
+            preferred_source_hints.extend(str(item) for item in metadata.get("target_sources", []) if str(item).strip())
+            rule_constraints.append(
+                {
+                    "doc_id": candidate.get("doc_id"),
+                    "rule_type": metadata.get("rule_type"),
+                    "description": next(
+                        (reason for reason in candidate.get("reasons", []) if str(reason).startswith("knowledge=")),
+                        str(candidate.get("source_ref", "")),
+                    ),
+                    "target_sources": list(metadata.get("target_sources", [])),
+                    "anchor_names": list(metadata.get("anchor_names", [])),
+                }
             )
+            selected_anchor_names.update(
+                str(item) for item in metadata.get("anchor_names", []) if str(item).strip()
+            )
+        elif doc_type == "anchor":
+            anchor_name = str(metadata.get("anchor_name", "")).strip()
+            if anchor_name:
+                selected_anchor_names.add(anchor_name)
+
+    def _source_matches_hint(source_ref: str, hint: str) -> bool:
+        lowered_source = source_ref.lower()
+        lowered_hint = hint.lower()
+        if lowered_hint in {"db", "sqlite"}:
+            return lowered_source.endswith((".db", ".sqlite"))
+        if lowered_hint == "json":
+            return lowered_source.endswith(".json")
+        if lowered_hint == "csv":
+            return lowered_source.endswith(".csv")
+        if lowered_hint in {"document", "doc"}:
+            return lowered_source.endswith((".md", ".txt"))
+        return lowered_hint == lowered_source
+
+    ordered_sources: list[str] = []
+    for hint in preferred_source_hints:
+        for source in required_sources:
+            if _source_matches_hint(source, hint) and source not in ordered_sources:
+                ordered_sources.append(source)
+    for source in required_sources:
+        normalized_source = str(source).strip()
+        if normalized_source and normalized_source not in ordered_sources:
+            ordered_sources.append(normalized_source)
+
+    if not ordered_sources:
+        ordered_sources = list(required_sources)
+
+    if needs_doc_confirmation:
+        routing_plan.append(
+            {
+                "step_type": "knowledge_check",
+                "source_type": "document",
+                "source_ref": "knowledge.md",
+                "target_items": [],
+                "operation_hint": "Confirm business rules and metric definitions before executing data access.",
+                "join_anchor": None,
+                "depends_on": [],
+                "knowledge_constraints": rule_constraints,
+            }
         )
-    return chosen
 
+    for index, source_ref in enumerate(ordered_sources, start=1):
+        source_kind = "document"
+        lowered_source = source_ref.lower()
+        if lowered_source.endswith((".db", ".sqlite")):
+            source_kind = "sqlite"
+        elif lowered_source.endswith(".csv"):
+            source_kind = "csv"
+        elif lowered_source.endswith(".json"):
+            source_kind = "json"
 
-def _build_binding_conflicts(
-    slots: list[PlannerQuestionSlot],
-    candidates_by_phrase: dict[str, list[PlannerBindingCandidate]],
-) -> list[PlannerConflict]:
-    conflicts: list[PlannerConflict] = []
-    for slot in slots:
-        candidates = candidates_by_phrase.get(slot.phrase, [])
-        if len(candidates) < 2:
-            continue
-        if slot.phrase == "disease":
-            conflicts.append(
-                PlannerConflict(
-                    phrase="disease",
-                    candidates=[f"{item.entity}.Diagnosis" for item in candidates[:2]],
-                    resolution="Prefer patient.Diagnosis because the question asks for the disease the patient is diagnosed with.",
-                )
-            )
-    return conflicts
+        target_items = [
+            {
+                "field_ref": item.get("field_ref"),
+                "display_name": item.get("display_name"),
+                "source_path": item.get("source_path"),
+                "semantic_role": item.get("semantic_role"),
+            }
+            for item in selected_source_items
+            if item.get("source_file") == source_ref
+        ]
+        anchor_name = next(
+            (
+                anchor_name
+                for anchor_name in selected_anchor_names
+                if source_ref in anchors.get(anchor_name, {}).get("source_files", [])
+            ),
+            None,
+        )
+        depends_on = []
+        if index > 1 and ordered_sources:
+            depends_on.append(ordered_sources[index - 2])
+        routing_plan.append(
+            {
+                "step_type": "source_access",
+                "source_type": source_kind,
+                "source_ref": source_ref,
+                "target_items": target_items,
+                "operation_hint": (
+                    "Use source-specific exploration or execution to retrieve the required items."
+                ),
+                "join_anchor": anchor_name,
+                "depends_on": depends_on,
+                "knowledge_constraints": rule_constraints,
+            }
+        )
 
+    if recommended_join_path:
+        routing_plan.append(
+            {
+                "step_type": "join_or_align",
+                "source_type": "cross_source",
+                "source_ref": "semantic_catalog",
+                "target_items": recommended_join_path,
+                "operation_hint": "Align intermediate results using the recommended join path and available cross-source anchors.",
+                "join_anchor": sorted(selected_anchor_names)[0] if selected_anchor_names else None,
+                "depends_on": list(ordered_sources),
+                "knowledge_constraints": rule_constraints,
+            }
+        )
 
-def _build_join_candidates(
-    catalog: SemanticCatalog,
-    chosen_bindings: list[PlannerChosenBinding],
-) -> list[PlannerJoinCandidate]:
-    chosen_entities = {item.entity for item in chosen_bindings}
-    join_candidates: list[PlannerJoinCandidate] = []
-    for relation in catalog.relations:
-        if relation.left_entity in chosen_entities and relation.right_entity in chosen_entities:
-            key_pair = relation.join_keys[0]
-            join_candidates.append(
-                PlannerJoinCandidate(
-                    left_entity=relation.left_entity,
-                    right_entity=relation.right_entity,
-                    left_field=key_pair.left_field,
-                    right_field=key_pair.right_field,
-                    score=1.0,
-                    reason="shared key and output fields require patient attributes",
-                )
-            )
-    return join_candidates
+    return routing_plan
 
 
 def _reconstruct_question(
@@ -506,14 +561,16 @@ def plan_semantic_query(
     question: str,
     target_metric: str | None = None,
     target_entity: str | None = None,
+    link_result: SchemaLinkResult | None = None,
+    feedback: str | None = None,
 ) -> dict[str, Any]:
     lower_question = question.lower()
     reconstruction = _reconstruct_question(catalog, question)
-    question_slots = _extract_question_slots(question)
-    candidates_by_phrase = _build_binding_candidates(catalog, question, question_slots)
-    chosen_bindings = _choose_bindings(question_slots, candidates_by_phrase)
-    binding_conflicts = _build_binding_conflicts(question_slots, candidates_by_phrase)
-    join_candidates = _build_join_candidates(catalog, chosen_bindings)
+    linker_query_units = list(link_result.query_units) if link_result is not None else []
+    chosen_bindings = list(link_result.chosen_bindings) if link_result is not None else []
+    candidate_bindings = list(link_result.candidate_bindings) if link_result is not None else []
+    binding_conflicts = list(link_result.binding_conflicts) if link_result is not None else []
+    join_candidates = list(link_result.join_candidates) if link_result is not None else []
     has_aggregation = any(keyword in lower_question for keyword in _AGGREGATION_KEYWORDS)
     has_document_risk = reconstruction["evidence_needs"] or bool(
         catalog.evidence and any(keyword in lower_question for keyword in ("rate", "margin", "definition"))
@@ -555,7 +612,11 @@ def plan_semantic_query(
     source_scores: dict[str, int] = {}
     entity_sources = _build_entity_source_map(catalog)
     linked_entities = {item["entity"] for item in reconstruction["linked_values"]}
-    linked_entities.update(item.entity for item in chosen_bindings)
+    linked_entities.update(
+        str(item.get("entity", "")).strip()
+        for item in chosen_bindings
+        if str(item.get("entity", "")).strip()
+    )
     for entity in catalog.entities:
         score = 0
         if entity.name in required_entities:
@@ -570,7 +631,7 @@ def plan_semantic_query(
             score += 2
         if _find_entity_mentions(lower_question, entity.name):
             score += 1
-        if any(item.entity == entity.name for item in chosen_bindings):
+        if any(str(item.get("entity", "")).strip() == entity.name for item in chosen_bindings):
             score += 4
         for source in entity.sources:
             source_scores[source] = max(source_scores.get(source, 0), score)
@@ -583,6 +644,8 @@ def plan_semantic_query(
     )
     if not required_sources and catalog.entities:
         required_sources.extend(catalog.entities[0].sources)
+    if link_result is not None and link_result.required_sources:
+        required_sources = sorted(set(required_sources) | set(link_result.required_sources))
 
     anchor_entity = resolved_target_entity or reconstruction["target_entity"]
     join_path_targets: list[str] = []
@@ -602,17 +665,71 @@ def plan_semantic_query(
     if not recommended_join_path and join_candidates:
         recommended_join_path = [
             {
-                "left_entity": item.left_entity,
-                "right_entity": item.right_entity,
+                "left_entity": str(item.get("left_entity", "")),
+                "right_entity": str(item.get("right_entity", "")),
                 "cardinality": "many_to_one",
             }
             for item in join_candidates
         ]
+    if link_result is not None and link_result.candidate_join_paths:
+        for edge in link_result.candidate_join_paths:
+            if edge not in recommended_join_path:
+                recommended_join_path.append(edge)
 
     for entity_name in linked_entities:
         for source in entity_sources.get(entity_name, []):
             if source not in required_sources:
                 required_sources.append(source)
+
+    if link_result is not None and not required_entities:
+        linked_required_entities = [
+            item["entity"]
+            for item in link_result.chosen_bindings
+            if str(item.get("entity", "")).strip()
+        ]
+        required_entities = sorted(set(linked_required_entities))
+
+    replanning_guidance: list[str] = []
+    if feedback:
+        lowered_feedback = feedback.lower()
+        if "empty result" in lowered_feedback or "zero rows" in lowered_feedback:
+            replanning_guidance.extend(
+                [
+                    "Re-check filter values, casing, and time-format normalization before retrying.",
+                    "If the query used a join, verify the join path and whether the driving table is correct.",
+                ]
+            )
+        if "null-like" in lowered_feedback or "all null" in lowered_feedback:
+            replanning_guidance.extend(
+                [
+                    "Re-check whether the projected field is coming from the correct table.",
+                    "Inspect whether the join direction or join type is creating null-only projections.",
+                ]
+            )
+        if "execution failures" in lowered_feedback or "field mappings" in lowered_feedback:
+            replanning_guidance.extend(
+                [
+                    "Inspect schema names again before issuing another SQL or Python query.",
+                    "Prefer a simpler validation query or schema preview before retrying a full join or aggregation.",
+                ]
+            )
+        if "shape mismatch" in lowered_feedback or "scalar-like result" in lowered_feedback:
+            replanning_guidance.extend(
+                [
+                    "Re-check whether the plan expects a scalar, a single-row summary, or a projected list before retrying.",
+                    "Inspect whether aggregation, ranking, DISTINCT, or final projection cleanup is still missing.",
+                ]
+            )
+
+    routing_candidates = _collect_routing_candidates(link_result)
+    routing_plan = _build_routing_plan(
+        catalog=catalog,
+        chosen_bindings=chosen_bindings,
+        required_sources=sorted(set(required_sources)),
+        routing_candidates=routing_candidates,
+        recommended_join_path=recommended_join_path,
+        needs_doc_confirmation=has_document_risk,
+    )
 
     return {
         "recommended_path": recommended_path,
@@ -631,8 +748,10 @@ def plan_semantic_query(
             if relation.cardinality in {"one_to_many", "many_to_many", "unknown"}
         ],
         "recommended_join_path": recommended_join_path,
+        "routing_plan": routing_plan,
         "expected_output_grain": expected_output_grain,
         "expected_output_columns": reconstruction["expected_output_columns"],
+        "replanning_guidance": replanning_guidance,
         "semantic_reconstruction": {
             "target_entity": reconstruction["target_entity"],
             "supporting_entities": reconstruction["supporting_entities"],
@@ -646,54 +765,24 @@ def plan_semantic_query(
         },
         "debug_view": {
             "question_slots": [
-                {"slot_type": item.slot_type, "phrase": item.phrase}
-                for item in question_slots
-            ],
-            "candidate_bindings": [
                 {
-                    "phrase": phrase,
-                    "candidates": [
-                        {
-                            "field_ref": candidate.field_ref,
-                            "entity": candidate.entity,
-                            "score": candidate.score,
-                            "reason": candidate.reason,
-                        }
-                        for candidate in candidates
-                    ],
+                    "slot_type": item.get("unit_type"),
+                    "phrase": item.get("text"),
+                    "role": item.get("role"),
+                    "binding_eligible": item.get("binding_eligible"),
                 }
-                for phrase, candidates in candidates_by_phrase.items()
+                for item in linker_query_units
             ],
-            "chosen_bindings": [
-                {
-                    "slot_type": item.slot_type,
-                    "phrase": item.phrase,
-                    "field_ref": item.field_ref,
-                    "entity": item.entity,
-                    "resolved_value": item.resolved_value,
-                }
-                for item in chosen_bindings
-            ],
-            "join_candidates": [
-                {
-                    "left_entity": item.left_entity,
-                    "right_entity": item.right_entity,
-                    "left_field": item.left_field,
-                    "right_field": item.right_field,
-                    "score": item.score,
-                    "reason": item.reason,
-                }
-                for item in join_candidates
-            ],
+            "candidate_bindings": candidate_bindings,
+            "chosen_bindings": chosen_bindings,
+            "join_candidates": join_candidates,
             "chosen_join_path": recommended_join_path,
-            "binding_conflicts": [
-                {
-                    "phrase": item.phrase,
-                    "candidates": item.candidates,
-                    "resolution": item.resolution,
-                }
-                for item in binding_conflicts
-            ],
+            "routing_candidates": routing_candidates,
+            "routing_plan": routing_plan,
+            "binding_conflicts": binding_conflicts,
+            "linker_debug": link_result.debug_view if link_result is not None else {},
+            "feedback": feedback or "",
+            "replanning_guidance": replanning_guidance,
         },
         "fallback_strategy": "If the metric definition is unclear, read the relevant document before answering.",
     }

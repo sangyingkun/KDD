@@ -107,8 +107,16 @@ def _run_single_task_core(
 
     agent = ReActAgent(
         model=model or build_model_adapter(config),
-        tools=tools or create_default_tool_registry(),
-        config=ReActAgentConfig(max_steps=config.agent.max_steps),
+        tools=tools or create_default_tool_registry(
+            config.retrieval,
+            enable_stateful_python_session=config.agent.enable_stateful_python_session,
+            python_session_timeout_seconds=config.agent.python_session_timeout_seconds,
+        ),
+        config=ReActAgentConfig(
+            max_steps=config.agent.max_steps,
+            enable_function_calling=config.agent.enable_function_calling,
+            allow_text_fallback_when_tools_missing=config.agent.allow_text_fallback_when_tools_missing,
+        ),
     )
     run_result = agent.run(task)
     return run_result.to_dict()
@@ -214,7 +222,11 @@ def run_single_task(
         # Run in main process on Windows; use subprocess timeout on Linux/macOS
         if sys.platform == "win32":
             model = build_model_adapter(config)
-            tools = create_default_tool_registry()
+            tools = create_default_tool_registry(
+                config.retrieval,
+                enable_stateful_python_session=config.agent.enable_stateful_python_session,
+                python_session_timeout_seconds=config.agent.python_session_timeout_seconds,
+            )
             run_result = _run_single_task_core(task_id=task_id, config=config, model=model, tools=tools)
         else:
             run_result = _run_single_task_with_timeout(task_id=task_id, config=config)
@@ -250,7 +262,11 @@ def run_benchmark(
     task_artifacts: list[TaskRunArtifacts]
     if effective_workers == 1:
         shared_model = model or build_model_adapter(config)
-        shared_tools = tools or create_default_tool_registry()
+        shared_tools = tools or create_default_tool_registry(
+            config.retrieval,
+            enable_stateful_python_session=config.agent.enable_stateful_python_session,
+            python_session_timeout_seconds=config.agent.python_session_timeout_seconds,
+        )
         task_artifacts = []
         for task_id in task_ids:
             artifact = run_single_task(

@@ -25,6 +25,12 @@ class AgentRuntimeState:
     steps: list[StepRecord] = field(default_factory=list)
     answer: AnswerTable | None = None
     failure_reason: str | None = None
+    repeated_dead_end_count: int = 0
+    last_dead_end_signature: str | None = None
+    latest_plan_snapshot: dict[str, Any] = field(default_factory=dict)
+    latest_routing_plan: list[dict[str, Any]] = field(default_factory=list)
+    completed_route_sources: list[str] = field(default_factory=list)
+    route_replan_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)

@@ -44,7 +44,10 @@ class DimensionSpec:
     aliases: list[str]
     confidence: str
     provenance: str
+    description: str = ""
     sample_values: list[str] = field(default_factory=list)
+    value_range: str | None = None
+    format_pattern: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +61,11 @@ class MeasureSpec:
     constraints: list[str]
     confidence: str
     provenance: str
+    aliases: list[str] = field(default_factory=list)
+    description: str = ""
+    sample_values: list[str] = field(default_factory=list)
+    value_range: str | None = None
+    format_pattern: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +92,56 @@ class EvidenceSpec:
     snippet: str
     confidence: str
     provenance: str
+
+
+@dataclass(frozen=True, slots=True)
+class SourceItemSpec:
+    item_id: str
+    item_type: str
+    entity: str
+    source_type: str
+    source_file: str
+    source_path: str
+    field_ref: str
+    display_name: str
+    normalized_name: str
+    data_type: str
+    semantic_role: str
+    description: str
+    retrieval_text: str
+    sample_values: list[str] = field(default_factory=list)
+    value_range: str | None = None
+    format_pattern: str | None = None
+    aliases: list[str] = field(default_factory=list)
+    anchor_names: list[str] = field(default_factory=list)
+    confidence: str = "medium"
+    provenance: str = "auto_schema"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class CrossSourceAnchorSpec:
+    anchor_name: str
+    members: list[str]
+    source_files: list[str]
+    description: str
+    confidence: str
+    provenance: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class RoutingRuleSpec:
+    rule_id: str
+    rule_type: str
+    description: str
+    source_file: str
+    condition: str
+    target_sources: list[str]
+    anchor_names: list[str] = field(default_factory=list)
+    confidence: str = "medium"
+    provenance: str = "auto_doc"
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +204,9 @@ class SemanticCatalog:
     metrics: list[MetricSpec] = field(default_factory=list)
     evidence: list[EvidenceSpec] = field(default_factory=list)
     knowledge_contract: KnowledgeContract = field(default_factory=KnowledgeContract)
+    source_items: list[SourceItemSpec] = field(default_factory=list)
+    cross_source_anchors: list[CrossSourceAnchorSpec] = field(default_factory=list)
+    routing_rules: list[RoutingRuleSpec] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -166,6 +227,9 @@ class SemanticCatalog:
             "measures": [asdict(spec) for spec in self.measures[:n]],
             "metrics": [asdict(spec) for spec in self.metrics[:n]],
             "knowledge_contract": asdict(self.knowledge_contract),
+            "source_items": [asdict(spec) for spec in self.source_items[:n]],
+            "cross_source_anchors": [asdict(spec) for spec in self.cross_source_anchors[:n]],
+            "routing_rules": [asdict(spec) for spec in self.routing_rules[:n]],
             "warnings": [],
         }
         if include_evidence:

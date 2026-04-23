@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import copy
+import json
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable
 
 from data_agent_baseline.benchmark.schema import AnswerTable, PublicTask
-from data_agent_baseline.config import PROJECT_ROOT
+from data_agent_baseline.config import PROJECT_ROOT, RetrievalConfig
 from data_agent_baseline.semantic.builder import build_base_semantic_catalog
 from data_agent_baseline.semantic.catalog import SemanticCatalog
+from data_agent_baseline.semantic.embedding import EmbeddingProvider, create_embedding_provider
+from data_agent_baseline.semantic.linker import SchemaLinkResult, link_schema_candidates
 from data_agent_baseline.semantic.overlay import apply_overlay, load_overlay_file
 from data_agent_baseline.semantic.planner import plan_semantic_query
+from data_agent_baseline.semantic.retrieval import TaskRetrievalIndex, build_task_retrieval_index
 from data_agent_baseline.semantic.resolver import resolve_business_term
 from data_agent_baseline.semantic.verifier import validate_answer_semantics
 from data_agent_baseline.tools.filesystem import (
@@ -18,10 +24,26 @@ from data_agent_baseline.tools.filesystem import (
     read_json_preview,
     resolve_context_path,
 )
-from data_agent_baseline.tools.python_exec import execute_python_code
+from data_agent_baseline.tools.python_exec import PythonSession, execute_python_code
 from data_agent_baseline.tools.sqlite import execute_read_only_sql, inspect_sqlite_schema
 
 EXECUTE_PYTHON_TIMEOUT_SECONDS = 30
+
+PROFILE_AGENT_CORE = "agent_core"
+PROFILE_SYSTEM_BOOTSTRAP = "system_bootstrap"
+PROFILE_VALIDATION = "validation"
+
+
+class ToolVisibility(str, Enum):
+    SYSTEM = "system"
+    AGENT = "agent"
+    VALIDATION = "validation"
+
+
+class ToolStage(str, Enum):
+    BOOTSTRAP = "bootstrap"
+    EXECUTION = "execution"
+    VALIDATION = "validation"
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +51,8 @@ class ToolSpec:
     name: str
     description: str
     input_schema: dict[str, Any]
+    visibility: ToolVisibility = ToolVisibility.AGENT
+    stage: ToolStage = ToolStage.EXECUTION
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,11 +114,18 @@ def _execute_context_sql(_: "ToolRegistry", task: PublicTask, action_input: dict
 
 def _execute_python(_: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
     code = str(action_input["code"])
-    content = execute_python_code(
-        context_root=task.context_dir,
-        code=code,
-        timeout_seconds=EXECUTE_PYTHON_TIMEOUT_SECONDS,
-    )
+    registry = _
+    if registry.enable_stateful_python_session:
+        content = registry.get_python_session(task).execute(
+            code,
+            timeout_seconds=registry.python_session_timeout_seconds,
+        )
+    else:
+        content = execute_python_code(
+            context_root=task.context_dir,
+            code=code,
+            timeout_seconds=registry.python_session_timeout_seconds,
+        )
     return ToolExecutionResult(ok=bool(content.get("success")), content=content)
 
 
@@ -169,16 +200,28 @@ def _plan_semantic_query(registry: "ToolRegistry", task: PublicTask, action_inpu
     question = str(action_input.get("question", task.question))
     target_metric = action_input.get("target_metric")
     target_entity = action_input.get("target_entity")
+    feedback = action_input.get("feedback")
     cached_plan = registry.get_semantic_plan(
         task,
         question=question,
         target_metric=target_metric,
         target_entity=target_entity,
+        feedback=str(feedback) if feedback is not None else None,
     )
     return ToolExecutionResult(
         ok=True,
         content=cached_plan,
     )
+
+
+def _link_schema_candidates(
+    registry: "ToolRegistry",
+    task: PublicTask,
+    action_input: dict[str, Any],
+) -> ToolExecutionResult:
+    question = str(action_input.get("question", task.question))
+    content = registry.get_schema_link_result(task, question=question)
+    return ToolExecutionResult(ok=True, content=content)
 
 
 def _validate_answer_semantics(registry: "ToolRegistry", task: PublicTask, action_input: dict[str, Any]) -> ToolExecutionResult:
@@ -203,15 +246,87 @@ def _validate_answer_semantics(registry: "ToolRegistry", task: PublicTask, actio
 class ToolRegistry:
     specs: dict[str, ToolSpec]
     handlers: dict[str, ToolHandler]
+    retrieval_config: RetrievalConfig = field(default_factory=RetrievalConfig)
+    enable_stateful_python_session: bool = True
+    python_session_timeout_seconds: int = EXECUTE_PYTHON_TIMEOUT_SECONDS
     _semantic_catalog_cache: dict[str, SemanticCatalog] = field(default_factory=dict)
-    _semantic_plan_cache: dict[tuple[str, str, str | None, str | None], dict[str, Any]] = field(default_factory=dict)
+    _semantic_plan_cache: dict[tuple[str, str, str | None, str | None, str | None], dict[str, Any]] = field(default_factory=dict)
+    _retrieval_index_cache: dict[str, TaskRetrievalIndex] = field(default_factory=dict)
+    _schema_link_cache: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    _python_session_cache: dict[str, PythonSession] = field(default_factory=dict)
+    _embedding_provider: EmbeddingProvider | None = None
 
-    def describe_for_prompt(self) -> str:
+    def get_specs_for_profile(self, profile: str) -> dict[str, ToolSpec]:
+        if profile == PROFILE_SYSTEM_BOOTSTRAP:
+            visibility = ToolVisibility.SYSTEM
+        elif profile == PROFILE_VALIDATION:
+            visibility = ToolVisibility.VALIDATION
+        elif profile == PROFILE_AGENT_CORE:
+            visibility = ToolVisibility.AGENT
+        else:
+            raise ValueError(f"Unknown tool profile: {profile}")
+        return {
+            name: spec
+            for name, spec in sorted(self.specs.items())
+            if spec.visibility == visibility
+        }
+
+    def _schema_from_example(self, value: Any) -> dict[str, Any]:
+        if isinstance(value, bool):
+            return {"type": "boolean"}
+        if isinstance(value, int) and not isinstance(value, bool):
+            return {"type": "integer"}
+        if isinstance(value, float):
+            return {"type": "number"}
+        if isinstance(value, str):
+            return {"type": "string"}
+        if value is None:
+            return {"type": "string"}
+        if isinstance(value, list):
+            item_schema = self._schema_from_example(value[0]) if value else {"type": "string"}
+            return {"type": "array", "items": item_schema}
+        if isinstance(value, dict):
+            properties = {key: self._schema_from_example(item) for key, item in value.items()}
+            return {
+                "type": "object",
+                "properties": properties,
+                "required": list(properties),
+                "additionalProperties": False,
+            }
+        return {"type": "string"}
+
+    def _tool_parameters_schema(self, spec: ToolSpec) -> dict[str, Any]:
+        inferred = self._schema_from_example(spec.input_schema)
+        if inferred.get("type") != "object":
+            return {
+                "type": "object",
+                "properties": {"value": inferred},
+                "required": ["value"],
+                "additionalProperties": False,
+            }
+        inferred.setdefault("additionalProperties", False)
+        return inferred
+
+    def to_openai_tools_format(self, profile: str = PROFILE_AGENT_CORE) -> list[dict[str, Any]]:
+        tools: list[dict[str, Any]] = []
+        for spec in self.get_specs_for_profile(profile).values():
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": spec.name,
+                        "description": spec.description,
+                        "parameters": self._tool_parameters_schema(spec),
+                    },
+                }
+            )
+        return tools
+
+    def describe_for_prompt(self, profile: str = PROFILE_AGENT_CORE) -> str:
         lines = []
-        for name in sorted(self.specs):
-            spec = self.specs[name]
+        for name, spec in self.get_specs_for_profile(profile).items():
             lines.append(f"- {spec.name}: {spec.description}")
-            lines.append(f"  input_schema: {spec.input_schema}")
+            lines.append(f"  input_schema: {json.dumps(spec.input_schema, ensure_ascii=False)}")
         return "\n".join(lines)
 
     def get_semantic_catalog(self, task: PublicTask) -> SemanticCatalog:
@@ -229,19 +344,102 @@ class ToolRegistry:
         question: str,
         target_metric: str | None,
         target_entity: str | None,
+        feedback: str | None = None,
     ) -> dict[str, Any]:
-        cache_key = (task.task_id, question, target_metric, target_entity)
+        cache_key = (task.task_id, question, target_metric, target_entity, feedback)
         cached = self._semantic_plan_cache.get(cache_key)
         if cached is not None:
-            return dict(cached)
+            return copy.deepcopy(cached)
+        link_result = self.get_schema_link_result(task, question=question, as_dataclass=True)
         plan = plan_semantic_query(
             self.get_semantic_catalog(task),
             question,
             target_metric=target_metric,
             target_entity=target_entity,
+            link_result=link_result,
+            feedback=feedback,
         )
-        self._semantic_plan_cache[cache_key] = dict(plan)
-        return dict(plan)
+        self._semantic_plan_cache[cache_key] = copy.deepcopy(plan)
+        return copy.deepcopy(plan)
+
+    def get_retrieval_index(self, task: PublicTask) -> TaskRetrievalIndex:
+        cached = self._retrieval_index_cache.get(task.task_id)
+        if cached is not None:
+            return cached
+        index = build_task_retrieval_index(self.get_semantic_catalog(task), self.get_embedding_provider())
+        self._retrieval_index_cache[task.task_id] = index
+        return index
+
+    def get_embedding_provider(self) -> EmbeddingProvider:
+        if self._embedding_provider is None:
+            self._embedding_provider = create_embedding_provider(self.retrieval_config)
+        return self._embedding_provider
+
+    def get_python_session(self, task: PublicTask) -> PythonSession:
+        cached = self._python_session_cache.get(task.task_id)
+        if cached is not None:
+            return cached
+        session = PythonSession(task.context_dir)
+        self._python_session_cache[task.task_id] = session
+        return session
+
+    def cleanup_task_runtime(self, task_id: str) -> None:
+        session = self._python_session_cache.pop(task_id, None)
+        if session is not None:
+            session.close(force=False)
+
+    def cleanup_all_runtime(self) -> None:
+        for task_id in list(self._python_session_cache):
+            self.cleanup_task_runtime(task_id)
+
+    def get_schema_link_result(
+        self,
+        task: PublicTask,
+        *,
+        question: str,
+        as_dataclass: bool = False,
+    ) -> dict[str, Any] | SchemaLinkResult:
+        cache_key = (task.task_id, question)
+        cached = self._schema_link_cache.get(cache_key)
+        if cached is None:
+            result = link_schema_candidates(
+                question,
+                self.get_semantic_catalog(task),
+                self.get_retrieval_index(task),
+                self.get_embedding_provider(),
+                self.retrieval_config,
+            )
+            cached = {
+                "query_units": copy.deepcopy(result.query_units),
+                "top_entities": copy.deepcopy(result.top_entities),
+                "top_fields": copy.deepcopy(result.top_fields),
+                "top_knowledge": copy.deepcopy(result.top_knowledge),
+                "candidate_bindings": copy.deepcopy(result.candidate_bindings),
+                "chosen_bindings": copy.deepcopy(result.chosen_bindings),
+                "binding_conflicts": copy.deepcopy(result.binding_conflicts),
+                "join_candidates": copy.deepcopy(result.join_candidates),
+                "candidate_join_paths": copy.deepcopy(result.candidate_join_paths),
+                "required_sources": list(result.required_sources),
+                "unresolved_ambiguities": copy.deepcopy(result.unresolved_ambiguities),
+                "debug_view": copy.deepcopy(result.debug_view),
+            }
+            self._schema_link_cache[cache_key] = cached
+        if as_dataclass:
+            return SchemaLinkResult(
+                query_units=copy.deepcopy(cached["query_units"]),
+                top_entities=copy.deepcopy(cached["top_entities"]),
+                top_fields=copy.deepcopy(cached["top_fields"]),
+                top_knowledge=copy.deepcopy(cached["top_knowledge"]),
+                candidate_bindings=copy.deepcopy(cached["candidate_bindings"]),
+                chosen_bindings=copy.deepcopy(cached["chosen_bindings"]),
+                binding_conflicts=copy.deepcopy(cached["binding_conflicts"]),
+                join_candidates=copy.deepcopy(cached["join_candidates"]),
+                candidate_join_paths=copy.deepcopy(cached["candidate_join_paths"]),
+                required_sources=list(cached["required_sources"]),
+                unresolved_ambiguities=copy.deepcopy(cached["unresolved_ambiguities"]),
+                debug_view=copy.deepcopy(cached["debug_view"]),
+            )
+        return copy.deepcopy(cached)
 
     def execute(self, task: PublicTask, action: str, action_input: dict[str, Any]) -> ToolExecutionResult:
         if action not in self.handlers:
@@ -249,7 +447,12 @@ class ToolRegistry:
         return self.handlers[action](self, task, action_input)
 
 
-def create_default_tool_registry() -> ToolRegistry:
+def create_default_tool_registry(
+    retrieval_config: RetrievalConfig | None = None,
+    *,
+    enable_stateful_python_session: bool = True,
+    python_session_timeout_seconds: int = EXECUTE_PYTHON_TIMEOUT_SECONDS,
+) -> ToolRegistry:
     specs = {
         "answer": ToolSpec(
             name="answer",
@@ -263,6 +466,8 @@ def create_default_tool_registry() -> ToolRegistry:
             name="describe_semantics",
             description="Describe the task-level semantic catalog, including entities, relations, dimensions, measures, metrics, and warnings.",
             input_schema={"include_evidence": False, "max_items_per_section": 10},
+            visibility=ToolVisibility.SYSTEM,
+            stage=ToolStage.BOOTSTRAP,
         ),
         "execute_context_sql": ToolSpec(
             name="execute_context_sql",
@@ -290,10 +495,22 @@ def create_default_tool_registry() -> ToolRegistry:
             description="List files and directories available under context.",
             input_schema={"max_depth": 4},
         ),
+        "link_schema_candidates": ToolSpec(
+            name="link_schema_candidates",
+            description=(
+                "Link question phrases to task-scoped entities, fields, knowledge, and candidate join paths "
+                "using hybrid retrieval before raw exploration."
+            ),
+            input_schema={"question": "For patients with severe degree of thrombosis, list their ID and sex."},
+            visibility=ToolVisibility.SYSTEM,
+            stage=ToolStage.BOOTSTRAP,
+        ),
         "plan_semantic_query": ToolSpec(
             name="plan_semantic_query",
             description="Suggest an execution path, required sources, and output grain for a question using the semantic catalog.",
             input_schema={"question": "What is total order amount by region?"},
+            visibility=ToolVisibility.SYSTEM,
+            stage=ToolStage.BOOTSTRAP,
         ),
         "read_csv": ToolSpec(
             name="read_csv",
@@ -319,6 +536,8 @@ def create_default_tool_registry() -> ToolRegistry:
             name="validate_answer_semantics",
             description="Validate a candidate answer against semantic grain, join, metric, and filter rules before final submission.",
             input_schema={"columns": ["total_amount"], "rows": [["99.5"]]},
+            visibility=ToolVisibility.VALIDATION,
+            stage=ToolStage.VALIDATION,
         ),
     }
     handlers = {
@@ -328,6 +547,7 @@ def create_default_tool_registry() -> ToolRegistry:
         "execute_python": _execute_python,
         "inspect_sqlite_schema": _inspect_sqlite_schema,
         "list_context": _list_context,
+        "link_schema_candidates": _link_schema_candidates,
         "plan_semantic_query": _plan_semantic_query,
         "read_csv": _read_csv,
         "read_doc": _read_doc,
@@ -335,4 +555,10 @@ def create_default_tool_registry() -> ToolRegistry:
         "resolve_business_term": _resolve_business_term,
         "validate_answer_semantics": _validate_answer_semantics,
     }
-    return ToolRegistry(specs=specs, handlers=handlers)
+    return ToolRegistry(
+        specs=specs,
+        handlers=handlers,
+        retrieval_config=retrieval_config or RetrievalConfig(),
+        enable_stateful_python_session=enable_stateful_python_session,
+        python_session_timeout_seconds=python_session_timeout_seconds,
+    )
