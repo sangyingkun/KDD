@@ -1,0 +1,1 @@
+"""Typed task asset adapters."""

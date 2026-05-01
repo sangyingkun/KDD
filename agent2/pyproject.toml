@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "data-agent-competition"
+version = "0.1.0"
+description = "Competition-focused semantic data agent kernel"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=1.1.10",
+    "pandas>=2.3.3",
+    "pydantic>=2.10.6",
+    "pyyaml>=6.0.2",
+    "rich>=13.9.4",
+    "typer>=0.15.2",
+]
+
+[project.optional-dependencies]
+runtime = [
+    "openai>=2.28.0",
+    "sentence-transformers>=3.0.1",
+]
+
+[project.scripts]
+dabench-agent2 = "data_agent_competition.runtime.app:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src"]

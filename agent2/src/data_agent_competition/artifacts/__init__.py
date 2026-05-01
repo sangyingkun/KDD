@@ -1,0 +1,1 @@
+"""Static semantic artifact schemas."""

@@ -1,0 +1,1369 @@
+{
+  "task_id": "task_19",
+  "assets": [
+    {
+      "asset_id": "csv/member.csv",
+      "relative_path": "csv/member.csv",
+      "kind": "csv",
+      "format": "csv",
+      "description": "",
+      "size_bytes": 3575
+    },
+    {
+      "asset_id": "json/zip_code.json",
+      "relative_path": "json/zip_code.json",
+      "kind": "json",
+      "format": "json",
+      "description": "",
+      "size_bytes": 7443215
+    },
+    {
+      "asset_id": "knowledge.md",
+      "relative_path": "knowledge.md",
+      "kind": "knowledge",
+      "format": "md",
+      "description": "",
+      "size_bytes": 5459
+    }
+  ],
+  "knowledge_facts": [
+    {
+      "fact_id": "knowledge.md::fact_1",
+      "statement": "# Enterprise Data Governance Knowledge Guide for Database: student_club",
+      "evidence": [
+        "# Enterprise Data Governance Knowledge Guide for Database: student_club"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_2",
+      "statement": "## 1. Introduction",
+      "evidence": [
+        "## 1. Introduction"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_3",
+      "statement": "This guide serves as a comprehensive semantic layer for the `student_club` database, providing authoritative definitions, metric formulations, and governance standards. It is designed to ensure consistent data interpretation and usage across the organization, supporting strategic decision-making and operational efficiency.",
+      "evidence": [
+        "This guide serves as a comprehensive semantic layer for the `student_club` database, providing authoritative definitions, metric formulations, and governance standards. It is designed to ensure consistent data interpretation and usage across the organization, supporting strategic decision-making and operational efficiency."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_4",
+      "statement": "## 2. Core Entities & Fields",
+      "evidence": [
+        "## 2. Core Entities & Fields"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_5",
+      "statement": "### Members",
+      "evidence": [
+        "### Members"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_6",
+      "statement": "**first_name, last_name**: Represents the full name of a club member. Always use both fields to ensure complete identification.",
+      "evidence": [
+        "**first_name, last_name**: Represents the full name of a club member. Always use both fields to ensure complete identification."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_7",
+      "statement": "**position**: Indicates the role of the member within the club (e.g., President, Vice President).",
+      "evidence": [
+        "**position**: Indicates the role of the member within the club (e.g., President, Vice President)."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_8",
+      "statement": "**major_name**: The academic major associated with the member, linked through the `major` table.",
+      "evidence": [
+        "**major_name**: The academic major associated with the member, linked through the `major` table."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_9",
+      "statement": "**t_shirt_size**: Preferred T-shirt size of the member, used for event merchandise planning.",
+      "evidence": [
+        "**t_shirt_size**: Preferred T-shirt size of the member, used for event merchandise planning."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_10",
+      "statement": "### Events",
+      "evidence": [
+        "### Events"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_11",
+      "statement": "**event_name**: The title of the event, used for identification and reporting.",
+      "evidence": [
+        "**event_name**: The title of the event, used for identification and reporting."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_12",
+      "statement": "**event_date**: The date on which the event occurs, formatted as 'YYYY-MM-DD'.",
+      "evidence": [
+        "**event_date**: The date on which the event occurs, formatted as 'YYYY-MM-DD'."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_13",
+      "statement": "**type**: Categorizes the event (e.g., Meeting, Fundraiser, Game).",
+      "evidence": [
+        "**type**: Categorizes the event (e.g., Meeting, Fundraiser, Game)."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_14",
+      "statement": "**status**: Indicates the current state of the event (e.g., Open, Closed).",
+      "evidence": [
+        "**status**: Indicates the current state of the event (e.g., Open, Closed)."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_15",
+      "statement": "### Financials",
+      "evidence": [
+        "### Financials"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_16",
+      "statement": "**amount**: Represents monetary values, such as funds received or budgeted amounts. Ensure currency consistency (e.g., USD).",
+      "evidence": [
+        "**amount**: Represents monetary values, such as funds received or budgeted amounts. Ensure currency consistency (e.g., USD)."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_17",
+      "statement": "**spent**: Total expenditure associated with an event or category.",
+      "evidence": [
+        "**spent**: Total expenditure associated with an event or category."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_18",
+      "statement": "**expense_description**: Details the nature of expenses incurred (e.g., Pizza, Posters).",
+      "evidence": [
+        "**expense_description**: Details the nature of expenses incurred (e.g., Pizza, Posters)."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_19",
+      "statement": "### Locations",
+      "evidence": [
+        "### Locations"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_20",
+      "statement": "**location**: Venue or place where the event is held.",
+      "evidence": [
+        "**location**: Venue or place where the event is held."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_21",
+      "statement": "**state, county**: Geographic identifiers for member addresses, used for demographic analysis.",
+      "evidence": [
+        "**state, county**: Geographic identifiers for member addresses, used for demographic analysis."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_22",
+      "statement": "## 3. Metric Definitions",
+      "evidence": [
+        "## 3. Metric Definitions"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_23",
+      "statement": "### Key Performance Indicators (KPIs)",
+      "evidence": [
+        "### Key Performance Indicators (KPIs)"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_24",
+      "statement": "**Event Attendance**: `COUNT(link_to_event)` - Measures the number of members attending an event.",
+      "evidence": [
+        "**Event Attendance**: `COUNT(link_to_event)` - Measures the number of members attending an event."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_25",
+      "statement": "**Budget Utilization**: `DIVIDE(spent, amount)` - Calculates the ratio of spent funds to budgeted amounts.",
+      "evidence": [
+        "**Budget Utilization**: `DIVIDE(spent, amount)` - Calculates the ratio of spent funds to budgeted amounts."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_26",
+      "statement": "**Member Participation**: `COUNT(link_to_event) > X` - Evaluates member engagement based on event attendance thresholds.",
+      "evidence": [
+        "**Member Participation**: `COUNT(link_to_event) > X` - Evaluates member engagement based on event attendance thresholds."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_27",
+      "statement": "**Fundraising Effectiveness**: `SUM(amount WHERE source = 'Fundraising')` - Assesses total funds raised through fundraising activities.",
+      "evidence": [
+        "**Fundraising Effectiveness**: `SUM(amount WHERE source = 'Fundraising')` - Assesses total funds raised through fundraising activities."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_28",
+      "statement": "### Calculation Logic",
+      "evidence": [
+        "### Calculation Logic"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_29",
+      "statement": "**Average Cost**: `AVG(cost)` - Computes the mean expense for specified criteria.",
+      "evidence": [
+        "**Average Cost**: `AVG(cost)` - Computes the mean expense for specified criteria."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_30",
+      "statement": "**Total Expenditure**: `SUM(spent)` - Aggregates all spending within a defined period or category.",
+      "evidence": [
+        "**Total Expenditure**: `SUM(spent)` - Aggregates all spending within a defined period or category."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_31",
+      "statement": "**Yearly Comparison**: `SUBTRACT(SUM(spent WHERE YEAR(event_date) = 2019), SUM(spent WHERE YEAR(event_date) = 2020))` - Compares annual spending across fiscal years.",
+      "evidence": [
+        "**Yearly Comparison**: `SUBTRACT(SUM(spent WHERE YEAR(event_date) = 2019), SUM(spent WHERE YEAR(event_date) = 2020))` - Compares annual spending across fiscal years."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_32",
+      "statement": "## 4. Constraints & Conventions",
+      "evidence": [
+        "## 4. Constraints & Conventions"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_33",
+      "statement": "### Filtering Criteria",
+      "evidence": [
+        "### Filtering Criteria"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_34",
+      "statement": "**Temporal Boundaries**: Use fiscal year format 'YYYY' for annual comparisons.",
+      "evidence": [
+        "**Temporal Boundaries**: Use fiscal year format 'YYYY' for annual comparisons."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_35",
+      "statement": "**Currency Formatting**: All monetary values are in USD; ensure consistent representation.",
+      "evidence": [
+        "**Currency Formatting**: All monetary values are in USD; ensure consistent representation."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_36",
+      "statement": "**Unit Conversion**: Apply standard conversion rates for non-monetary metrics (e.g., attendance counts).",
+      "evidence": [
+        "**Unit Conversion**: Apply standard conversion rates for non-monetary metrics (e.g., attendance counts)."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_37",
+      "statement": "### Common Filters",
+      "evidence": [
+        "### Common Filters"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_38",
+      "statement": "**Event Type**: Filter by `type` to isolate specific event categories.",
+      "evidence": [
+        "**Event Type**: Filter by `type` to isolate specific event categories."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_39",
+      "statement": "**Member Position**: Use `position` to segment data by club roles.",
+      "evidence": [
+        "**Member Position**: Use `position` to segment data by club roles."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_40",
+      "statement": "## 5. Exemplar Use Cases",
+      "evidence": [
+        "## 5. Exemplar Use Cases"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_41",
+      "statement": "### Example 1: Calculating Event Attendance",
+      "evidence": [
+        "### Example 1: Calculating Event Attendance"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_42",
+      "statement": "**Metric**: Event Attendance",
+      "evidence": [
+        "**Metric**: Event Attendance"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_43",
+      "statement": "**SQL**: `SELECT COUNT(link_to_event) FROM attendance WHERE event_id = X`",
+      "evidence": [
+        "**SQL**: `SELECT COUNT(link_to_event) FROM attendance WHERE event_id = X`"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_44",
+      "statement": "**Explanation**: This metric calculates the total number of members who attended a specific event, providing insights into engagement levels.",
+      "evidence": [
+        "**Explanation**: This metric calculates the total number of members who attended a specific event, providing insights into engagement levels."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_45",
+      "statement": "### Example 2: Assessing Budget Utilization",
+      "evidence": [
+        "### Example 2: Assessing Budget Utilization"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_46",
+      "statement": "**Metric**: Budget Utilization",
+      "evidence": [
+        "**Metric**: Budget Utilization"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_47",
+      "statement": "**SQL**: `SELECT DIVIDE(spent, amount) FROM budget WHERE event_id = X`",
+      "evidence": [
+        "**SQL**: `SELECT DIVIDE(spent, amount) FROM budget WHERE event_id = X`"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_48",
+      "statement": "**Explanation**: This formula evaluates how effectively the allocated budget was used, highlighting potential overspending or savings.",
+      "evidence": [
+        "**Explanation**: This formula evaluates how effectively the allocated budget was used, highlighting potential overspending or savings."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_49",
+      "statement": "### Example 3: Comparing Yearly Expenditure",
+      "evidence": [
+        "### Example 3: Comparing Yearly Expenditure"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_50",
+      "statement": "**Metric**: Yearly Comparison",
+      "evidence": [
+        "**Metric**: Yearly Comparison"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_51",
+      "statement": "**SQL**: `SELECT SUBTRACT(SUM(spent WHERE YEAR(event_date) = 2019), SUM(spent WHERE YEAR(event_date) = 2020))`",
+      "evidence": [
+        "**SQL**: `SELECT SUBTRACT(SUM(spent WHERE YEAR(event_date) = 2019), SUM(spent WHERE YEAR(event_date) = 2020))`"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_52",
+      "statement": "**Explanation**: This comparison provides a clear view of spending trends across different fiscal years, aiding in budget planning.",
+      "evidence": [
+        "**Explanation**: This comparison provides a clear view of spending trends across different fiscal years, aiding in budget planning."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_53",
+      "statement": "### Example 4: Determining Fundraising Success",
+      "evidence": [
+        "### Example 4: Determining Fundraising Success"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_54",
+      "statement": "**Metric**: Fundraising Effectiveness",
+      "evidence": [
+        "**Metric**: Fundraising Effectiveness"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_55",
+      "statement": "**SQL**: `SELECT SUM(amount) FROM income WHERE source = 'Fundraising'`",
+      "evidence": [
+        "**SQL**: `SELECT SUM(amount) FROM income WHERE source = 'Fundraising'`"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_56",
+      "statement": "**Explanation**: This metric quantifies the total funds raised through fundraising activities, essential for evaluating campaign success.",
+      "evidence": [
+        "**Explanation**: This metric quantifies the total funds raised through fundraising activities, essential for evaluating campaign success."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_57",
+      "statement": "### Example 5: Calculating Average Member Participation",
+      "evidence": [
+        "### Example 5: Calculating Average Member Participation"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_58",
+      "statement": "**Metric**: Member Participation",
+      "evidence": [
+        "**Metric**: Member Participation"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_59",
+      "statement": "**SQL**: `SELECT COUNT(link_to_event) FROM attendance WHERE member_id = X GROUP BY member_id HAVING COUNT(link_to_event) > 7`",
+      "evidence": [
+        "**SQL**: `SELECT COUNT(link_to_event) FROM attendance WHERE member_id = X GROUP BY member_id HAVING COUNT(link_to_event) > 7`"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_60",
+      "statement": "**Explanation**: This formula measures member engagement by counting the number of events attended, identifying highly active members.",
+      "evidence": [
+        "**Explanation**: This formula measures member engagement by counting the number of events attended, identifying highly active members."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_61",
+      "statement": "## 6. Ambiguity Resolution",
+      "evidence": [
+        "## 6. Ambiguity Resolution"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_62",
+      "statement": "### Potentially Ambiguous Fields",
+      "evidence": [
+        "### Potentially Ambiguous Fields"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_63",
+      "statement": "**name**: Always specify whether referring to `event_name` or `member_name` to avoid confusion.",
+      "evidence": [
+        "**name**: Always specify whether referring to `event_name` or `member_name` to avoid confusion."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_64",
+      "statement": "**amount**: Clarify whether it pertains to `budgeted amount`, `spent amount`, or `funds received`.",
+      "evidence": [
+        "**amount**: Clarify whether it pertains to `budgeted amount`, `spent amount`, or `funds received`."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_65",
+      "statement": "**date**: Distinguish between `event_date`, `expense_date`, and `date_received` for accurate temporal analysis.",
+      "evidence": [
+        "**date**: Distinguish between `event_date`, `expense_date`, and `date_received` for accurate temporal analysis."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_66",
+      "statement": "### Recommended Usage",
+      "evidence": [
+        "### Recommended Usage"
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_67",
+      "statement": "Prioritize context-specific identifiers (e.g., `event_name` for event-related queries) to ensure clarity and prevent misinterpretation.",
+      "evidence": [
+        "Prioritize context-specific identifiers (e.g., `event_name` for event-related queries) to ensure clarity and prevent misinterpretation."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    },
+    {
+      "fact_id": "knowledge.md::fact_68",
+      "statement": "This guide is intended to be a living document, updated regularly to reflect changes in business processes and data structures. Adherence to these standards will ensure data integrity and facilitate effective governance across the organization.",
+      "evidence": [
+        "This guide is intended to be a living document, updated regularly to reflect changes in business processes and data structures. Adherence to these standards will ensure data integrity and facilitate effective governance across the organization."
+      ],
+      "source_path": "knowledge.md",
+      "tags": []
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "csv/member.csv",
+      "source_kind": "csv",
+      "asset_path": "csv/member.csv",
+      "object_name": "member",
+      "description": "delimited file",
+      "grain_hint": [],
+      "fields": [
+        {
+          "field_name": "member_id",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "member id",
+            "member_id",
+            "memberid"
+          ],
+          "sample_values": [
+            "rec1x5zBFIqoOuPW8",
+            "rec280Sk7o31iG0Tx",
+            "rec28ORZgcm1dtqBZ"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "first_name",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "first name",
+            "first_name",
+            "firstname"
+          ],
+          "sample_values": [
+            "Angela",
+            "Grant",
+            "Luisa"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "last_name",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "last name",
+            "last_name",
+            "lastname"
+          ],
+          "sample_values": [
+            "Sanders",
+            "Gilmour",
+            "Guidi"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "email",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "email"
+          ],
+          "sample_values": [
+            "angela.sanders@lpu.edu",
+            "grant.gilmour@lpu.edu",
+            "luisa.guidi@lpu.edu"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "position",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "position"
+          ],
+          "sample_values": [
+            "Member",
+            "Member",
+            "Member"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "t_shirt_size",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "t shirt size",
+            "t_shirt_size",
+            "tshirtsize"
+          ],
+          "sample_values": [
+            "Medium",
+            "X-Large",
+            "Medium"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "phone",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "phone"
+          ],
+          "sample_values": [
+            "(651) 928-4507",
+            "403-555-1310",
+            "442-555-5882"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "zip",
+          "dtype": "int64",
+          "description": "",
+          "aliases": [
+            "zip"
+          ],
+          "sample_values": [
+            "55108",
+            "29440",
+            "10002"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "link_to_major",
+          "dtype": "object",
+          "description": "",
+          "aliases": [
+            "link to major",
+            "link_to_major",
+            "linktomajor"
+          ],
+          "sample_values": [
+            "recxK3MHQFbR9J5uO",
+            "rec7BxKpjJ7bNph3O",
+            "recdIBgeU38UbV2sy"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "source_id": "json/zip_code.json",
+      "source_kind": "json",
+      "asset_path": "json/zip_code.json",
+      "object_name": "zip_code",
+      "description": "json root=dict",
+      "grain_hint": [],
+      "fields": [
+        {
+          "field_name": "city",
+          "dtype": "json",
+          "description": "",
+          "aliases": [
+            "city"
+          ],
+          "sample_values": [
+            "Holtsville",
+            "Holtsville",
+            "Adjuntas"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "county",
+          "dtype": "json",
+          "description": "",
+          "aliases": [
+            "county"
+          ],
+          "sample_values": [
+            "Suffolk County",
+            "Suffolk County",
+            "Adjuntas Municipio"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "short_state",
+          "dtype": "json",
+          "description": "",
+          "aliases": [
+            "short state",
+            "short_state",
+            "shortstate"
+          ],
+          "sample_values": [
+            "NY",
+            "NY",
+            "PR"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "state",
+          "dtype": "json",
+          "description": "",
+          "aliases": [
+            "state"
+          ],
+          "sample_values": [
+            "New York",
+            "New York",
+            "Puerto Rico"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "type",
+          "dtype": "json",
+          "description": "",
+          "aliases": [
+            "type"
+          ],
+          "sample_values": [
+            "Unique",
+            "Unique",
+            "Standard"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        },
+        {
+          "field_name": "zip_code",
+          "dtype": "json",
+          "description": "",
+          "aliases": [
+            "zip code",
+            "zip_code",
+            "zipcode"
+          ],
+          "sample_values": [
+            "501",
+            "544",
+            "601"
+          ],
+          "semantic_tags": [],
+          "nullable": true
+        }
+      ]
+    }
+  ],
+  "field_aliases": {
+    "csv/member.csv.member_id": [
+      "member id",
+      "member_id",
+      "memberid"
+    ],
+    "csv/member.csv.first_name": [
+      "first name",
+      "first_name",
+      "firstname"
+    ],
+    "csv/member.csv.last_name": [
+      "last name",
+      "last_name",
+      "lastname"
+    ],
+    "csv/member.csv.email": [
+      "email"
+    ],
+    "csv/member.csv.position": [
+      "position"
+    ],
+    "csv/member.csv.t_shirt_size": [
+      "t shirt size",
+      "t_shirt_size",
+      "tshirtsize"
+    ],
+    "csv/member.csv.phone": [
+      "phone"
+    ],
+    "csv/member.csv.zip": [
+      "zip"
+    ],
+    "csv/member.csv.link_to_major": [
+      "link to major",
+      "link_to_major",
+      "linktomajor"
+    ],
+    "json/zip_code.json.city": [
+      "city"
+    ],
+    "json/zip_code.json.county": [
+      "county"
+    ],
+    "json/zip_code.json.short_state": [
+      "short state",
+      "short_state",
+      "shortstate"
+    ],
+    "json/zip_code.json.state": [
+      "state"
+    ],
+    "json/zip_code.json.type": [
+      "type"
+    ],
+    "json/zip_code.json.zip_code": [
+      "zip code",
+      "zip_code",
+      "zipcode"
+    ]
+  },
+  "value_groundings": [
+    {
+      "term": "rec1x5zBFIqoOuPW8",
+      "normalized_term": "rec1x5z_bfiqo_ou_pw8",
+      "resolved_value": "rec1x5zBFIqoOuPW8",
+      "source_id": "csv/member.csv",
+      "field_name": "member_id",
+      "confidence": 0.25
+    },
+    {
+      "term": "rec280Sk7o31iG0Tx",
+      "normalized_term": "rec280_sk7o31i_g0_tx",
+      "resolved_value": "rec280Sk7o31iG0Tx",
+      "source_id": "csv/member.csv",
+      "field_name": "member_id",
+      "confidence": 0.25
+    },
+    {
+      "term": "rec28ORZgcm1dtqBZ",
+      "normalized_term": "rec28_orzgcm1dtq_bz",
+      "resolved_value": "rec28ORZgcm1dtqBZ",
+      "source_id": "csv/member.csv",
+      "field_name": "member_id",
+      "confidence": 0.25
+    },
+    {
+      "term": "Angela",
+      "normalized_term": "angela",
+      "resolved_value": "Angela",
+      "source_id": "csv/member.csv",
+      "field_name": "first_name",
+      "confidence": 0.25
+    },
+    {
+      "term": "Grant",
+      "normalized_term": "grant",
+      "resolved_value": "Grant",
+      "source_id": "csv/member.csv",
+      "field_name": "first_name",
+      "confidence": 0.25
+    },
+    {
+      "term": "Luisa",
+      "normalized_term": "luisa",
+      "resolved_value": "Luisa",
+      "source_id": "csv/member.csv",
+      "field_name": "first_name",
+      "confidence": 0.25
+    },
+    {
+      "term": "Sanders",
+      "normalized_term": "sanders",
+      "resolved_value": "Sanders",
+      "source_id": "csv/member.csv",
+      "field_name": "last_name",
+      "confidence": 0.25
+    },
+    {
+      "term": "Gilmour",
+      "normalized_term": "gilmour",
+      "resolved_value": "Gilmour",
+      "source_id": "csv/member.csv",
+      "field_name": "last_name",
+      "confidence": 0.25
+    },
+    {
+      "term": "Guidi",
+      "normalized_term": "guidi",
+      "resolved_value": "Guidi",
+      "source_id": "csv/member.csv",
+      "field_name": "last_name",
+      "confidence": 0.25
+    },
+    {
+      "term": "angela.sanders@lpu.edu",
+      "normalized_term": "angela_sanders_lpu_edu",
+      "resolved_value": "angela.sanders@lpu.edu",
+      "source_id": "csv/member.csv",
+      "field_name": "email",
+      "confidence": 0.25
+    },
+    {
+      "term": "grant.gilmour@lpu.edu",
+      "normalized_term": "grant_gilmour_lpu_edu",
+      "resolved_value": "grant.gilmour@lpu.edu",
+      "source_id": "csv/member.csv",
+      "field_name": "email",
+      "confidence": 0.25
+    },
+    {
+      "term": "luisa.guidi@lpu.edu",
+      "normalized_term": "luisa_guidi_lpu_edu",
+      "resolved_value": "luisa.guidi@lpu.edu",
+      "source_id": "csv/member.csv",
+      "field_name": "email",
+      "confidence": 0.25
+    },
+    {
+      "term": "Member",
+      "normalized_term": "member",
+      "resolved_value": "Member",
+      "source_id": "csv/member.csv",
+      "field_name": "position",
+      "confidence": 0.25
+    },
+    {
+      "term": "Member",
+      "normalized_term": "member",
+      "resolved_value": "Member",
+      "source_id": "csv/member.csv",
+      "field_name": "position",
+      "confidence": 0.25
+    },
+    {
+      "term": "Member",
+      "normalized_term": "member",
+      "resolved_value": "Member",
+      "source_id": "csv/member.csv",
+      "field_name": "position",
+      "confidence": 0.25
+    },
+    {
+      "term": "Medium",
+      "normalized_term": "medium",
+      "resolved_value": "Medium",
+      "source_id": "csv/member.csv",
+      "field_name": "t_shirt_size",
+      "confidence": 0.25
+    },
+    {
+      "term": "X-Large",
+      "normalized_term": "x_large",
+      "resolved_value": "X-Large",
+      "source_id": "csv/member.csv",
+      "field_name": "t_shirt_size",
+      "confidence": 0.25
+    },
+    {
+      "term": "Medium",
+      "normalized_term": "medium",
+      "resolved_value": "Medium",
+      "source_id": "csv/member.csv",
+      "field_name": "t_shirt_size",
+      "confidence": 0.25
+    },
+    {
+      "term": "(651) 928-4507",
+      "normalized_term": "651_928_4507",
+      "resolved_value": "(651) 928-4507",
+      "source_id": "csv/member.csv",
+      "field_name": "phone",
+      "confidence": 0.25
+    },
+    {
+      "term": "403-555-1310",
+      "normalized_term": "403_555_1310",
+      "resolved_value": "403-555-1310",
+      "source_id": "csv/member.csv",
+      "field_name": "phone",
+      "confidence": 0.25
+    },
+    {
+      "term": "442-555-5882",
+      "normalized_term": "442_555_5882",
+      "resolved_value": "442-555-5882",
+      "source_id": "csv/member.csv",
+      "field_name": "phone",
+      "confidence": 0.25
+    },
+    {
+      "term": "55108",
+      "normalized_term": "55108",
+      "resolved_value": "55108",
+      "source_id": "csv/member.csv",
+      "field_name": "zip",
+      "confidence": 0.25
+    },
+    {
+      "term": "29440",
+      "normalized_term": "29440",
+      "resolved_value": "29440",
+      "source_id": "csv/member.csv",
+      "field_name": "zip",
+      "confidence": 0.25
+    },
+    {
+      "term": "10002",
+      "normalized_term": "10002",
+      "resolved_value": "10002",
+      "source_id": "csv/member.csv",
+      "field_name": "zip",
+      "confidence": 0.25
+    },
+    {
+      "term": "recxK3MHQFbR9J5uO",
+      "normalized_term": "recx_k3_mhqfb_r9_j5u_o",
+      "resolved_value": "recxK3MHQFbR9J5uO",
+      "source_id": "csv/member.csv",
+      "field_name": "link_to_major",
+      "confidence": 0.25
+    },
+    {
+      "term": "rec7BxKpjJ7bNph3O",
+      "normalized_term": "rec7_bx_kpj_j7b_nph3_o",
+      "resolved_value": "rec7BxKpjJ7bNph3O",
+      "source_id": "csv/member.csv",
+      "field_name": "link_to_major",
+      "confidence": 0.25
+    },
+    {
+      "term": "recdIBgeU38UbV2sy",
+      "normalized_term": "recd_ibge_u38_ub_v2sy",
+      "resolved_value": "recdIBgeU38UbV2sy",
+      "source_id": "csv/member.csv",
+      "field_name": "link_to_major",
+      "confidence": 0.25
+    },
+    {
+      "term": "Holtsville",
+      "normalized_term": "holtsville",
+      "resolved_value": "Holtsville",
+      "source_id": "json/zip_code.json",
+      "field_name": "city",
+      "confidence": 0.25
+    },
+    {
+      "term": "Holtsville",
+      "normalized_term": "holtsville",
+      "resolved_value": "Holtsville",
+      "source_id": "json/zip_code.json",
+      "field_name": "city",
+      "confidence": 0.25
+    },
+    {
+      "term": "Adjuntas",
+      "normalized_term": "adjuntas",
+      "resolved_value": "Adjuntas",
+      "source_id": "json/zip_code.json",
+      "field_name": "city",
+      "confidence": 0.25
+    },
+    {
+      "term": "Suffolk County",
+      "normalized_term": "suffolk_county",
+      "resolved_value": "Suffolk County",
+      "source_id": "json/zip_code.json",
+      "field_name": "county",
+      "confidence": 0.25
+    },
+    {
+      "term": "Suffolk County",
+      "normalized_term": "suffolk_county",
+      "resolved_value": "Suffolk County",
+      "source_id": "json/zip_code.json",
+      "field_name": "county",
+      "confidence": 0.25
+    },
+    {
+      "term": "Adjuntas Municipio",
+      "normalized_term": "adjuntas_municipio",
+      "resolved_value": "Adjuntas Municipio",
+      "source_id": "json/zip_code.json",
+      "field_name": "county",
+      "confidence": 0.25
+    },
+    {
+      "term": "NY",
+      "normalized_term": "ny",
+      "resolved_value": "NY",
+      "source_id": "json/zip_code.json",
+      "field_name": "short_state",
+      "confidence": 0.25
+    },
+    {
+      "term": "NY",
+      "normalized_term": "ny",
+      "resolved_value": "NY",
+      "source_id": "json/zip_code.json",
+      "field_name": "short_state",
+      "confidence": 0.25
+    },
+    {
+      "term": "PR",
+      "normalized_term": "pr",
+      "resolved_value": "PR",
+      "source_id": "json/zip_code.json",
+      "field_name": "short_state",
+      "confidence": 0.25
+    },
+    {
+      "term": "New York",
+      "normalized_term": "new_york",
+      "resolved_value": "New York",
+      "source_id": "json/zip_code.json",
+      "field_name": "state",
+      "confidence": 0.25
+    },
+    {
+      "term": "New York",
+      "normalized_term": "new_york",
+      "resolved_value": "New York",
+      "source_id": "json/zip_code.json",
+      "field_name": "state",
+      "confidence": 0.25
+    },
+    {
+      "term": "Puerto Rico",
+      "normalized_term": "puerto_rico",
+      "resolved_value": "Puerto Rico",
+      "source_id": "json/zip_code.json",
+      "field_name": "state",
+      "confidence": 0.25
+    },
+    {
+      "term": "Unique",
+      "normalized_term": "unique",
+      "resolved_value": "Unique",
+      "source_id": "json/zip_code.json",
+      "field_name": "type",
+      "confidence": 0.25
+    },
+    {
+      "term": "Unique",
+      "normalized_term": "unique",
+      "resolved_value": "Unique",
+      "source_id": "json/zip_code.json",
+      "field_name": "type",
+      "confidence": 0.25
+    },
+    {
+      "term": "Standard",
+      "normalized_term": "standard",
+      "resolved_value": "Standard",
+      "source_id": "json/zip_code.json",
+      "field_name": "type",
+      "confidence": 0.25
+    },
+    {
+      "term": "501",
+      "normalized_term": "501",
+      "resolved_value": "501",
+      "source_id": "json/zip_code.json",
+      "field_name": "zip_code",
+      "confidence": 0.25
+    },
+    {
+      "term": "544",
+      "normalized_term": "544",
+      "resolved_value": "544",
+      "source_id": "json/zip_code.json",
+      "field_name": "zip_code",
+      "confidence": 0.25
+    },
+    {
+      "term": "601",
+      "normalized_term": "601",
+      "resolved_value": "601",
+      "source_id": "json/zip_code.json",
+      "field_name": "zip_code",
+      "confidence": 0.25
+    }
+  ],
+  "join_candidates": [],
+  "doc_chunks": [
+    {
+      "chunk_id": "knowledge.md::chunk_1",
+      "asset_path": "knowledge.md",
+      "text": "# Enterprise Data Governance Knowledge Guide for Database: student_club ## 1. Introduction This guide serves as a comprehensive semantic layer for the `student_club` database, providing authoritative definitions, metric formulations, and governance standards. It is designed to ensure consistent data interpretation and usage across the organization, supporting strategic decision-making and operational efficiency. ## 2. Core Entities & Fields ### Members - **first_name, last_name**: Represents the full name of a club member. Always use both fields to ensure complete identification. - **position**: Indicates the role of the member within the club (e.g., President, Vice President). - **major_name**: The academic major associated with the member, linked through the `major` table. - **t_shirt_size**: Preferred T-shirt size of the member, used for event merchandise planning. ### Events - **event_name**: The title of the event, used for identification and reporting. - **event_date**: The date on which the event occurs, formatted as 'YYYY-MM-DD'. - **type**: Categorizes the event (e.g., Meeting, Fundraiser, Game). - **status**: Indicates the current state of the event (e.g., Open, Closed).",
+      "section": "",
+      "keywords": []
+    },
+    {
+      "chunk_id": "knowledge.md::chunk_2",
+      "asset_path": "knowledge.md",
+      "text": "### Financials - **amount**: Represents monetary values, such as funds received or budgeted amounts. Ensure currency consistency (e.g., USD). - **spent**: Total expenditure associated with an event or category. - **expense_description**: Details the nature of expenses incurred (e.g., Pizza, Posters). ### Locations - **location**: Venue or place where the event is held. - **state, county**: Geographic identifiers for member addresses, used for demographic analysis. ## 3. Metric Definitions ### Key Performance Indicators (KPIs) - **Event Attendance**: `COUNT(link_to_event)` - Measures the number of members attending an event. - **Budget Utilization**: `DIVIDE(spent, amount)` - Calculates the ratio of spent funds to budgeted amounts. - **Member Participation**: `COUNT(link_to_event) > X` - Evaluates member engagement based on event attendance thresholds. - **Fundraising Effectiveness**: `SUM(amount WHERE source = 'Fundraising')` - Assesses total funds raised through fundraising activities. ### Calculation Logic - **Average Cost**: `AVG(cost)` - Computes the mean expense for specified criteria. - **Total Expenditure**: `SUM(spent)` - Aggregates all spending within a defined period or c",
+      "section": "",
+      "keywords": []
+    },
+    {
+      "chunk_id": "knowledge.md::chunk_3",
+      "asset_path": "knowledge.md",
+      "text": "ategory. - **Yearly Comparison**: `SUBTRACT(SUM(spent WHERE YEAR(event_date) = 2019), SUM(spent WHERE YEAR(event_date) = 2020))` - Compares annual spending across fiscal years. ## 4. Constraints & Conventions ### Filtering Criteria - **Temporal Boundaries**: Use fiscal year format 'YYYY' for annual comparisons. - **Currency Formatting**: All monetary values are in USD; ensure consistent representation. - **Unit Conversion**: Apply standard conversion rates for non-monetary metrics (e.g., attendance counts). ### Common Filters - **Event Type**: Filter by `type` to isolate specific event categories. - **Member Position**: Use `position` to segment data by club roles. ## 5. Exemplar Use Cases ### Example 1: Calculating Event Attendance - **Metric**: Event Attendance - **SQL**: `SELECT COUNT(link_to_event) FROM attendance WHERE event_id = X` - **Explanation**: This metric calculates the total number of members who attended a specific event, providing insights into engagement levels. ### Example 2: Assessing Budget Utilization - **Metric**: Budget Utilization - **SQL**: `SELECT DIVIDE(spent, amount) FROM budget WHERE event_id = X` - **Explanation**: This formula evaluates how effectivel",
+      "section": "",
+      "keywords": []
+    },
+    {
+      "chunk_id": "knowledge.md::chunk_4",
+      "asset_path": "knowledge.md",
+      "text": "y the allocated budget was used, highlighting potential overspending or savings. ### Example 3: Comparing Yearly Expenditure - **Metric**: Yearly Comparison - **SQL**: `SELECT SUBTRACT(SUM(spent WHERE YEAR(event_date) = 2019), SUM(spent WHERE YEAR(event_date) = 2020))` - **Explanation**: This comparison provides a clear view of spending trends across different fiscal years, aiding in budget planning. ### Example 4: Determining Fundraising Success - **Metric**: Fundraising Effectiveness - **SQL**: `SELECT SUM(amount) FROM income WHERE source = 'Fundraising'` - **Explanation**: This metric quantifies the total funds raised through fundraising activities, essential for evaluating campaign success. ### Example 5: Calculating Average Member Participation - **Metric**: Member Participation - **SQL**: `SELECT COUNT(link_to_event) FROM attendance WHERE member_id = X GROUP BY member_id HAVING COUNT(link_to_event) > 7` - **Explanation**: This formula measures member engagement by counting the number of events attended, identifying highly active members. ## 6. Ambiguity Resolution ### Potentially Ambiguous Fields - **name**: Always specify whether referring to `event_name` or `member_name` to",
+      "section": "",
+      "keywords": []
+    },
+    {
+      "chunk_id": "knowledge.md::chunk_5",
+      "asset_path": "knowledge.md",
+      "text": "avoid confusion. - **amount**: Clarify whether it pertains to `budgeted amount`, `spent amount`, or `funds received`. - **date**: Distinguish between `event_date`, `expense_date`, and `date_received` for accurate temporal analysis. ### Recommended Usage - Prioritize context-specific identifiers (e.g., `event_name` for event-related queries) to ensure clarity and prevent misinterpretation. This guide is intended to be a living document, updated regularly to reflect changes in business processes and data structures. Adherence to these standards will ensure data integrity and facilitate effective governance across the organization.",
+      "section": "",
+      "keywords": []
+    }
+  ],
+  "notes": [
+    "Generated by agent2/scripts/build_competition_artifacts.py",
+    "This artifact is intended as a static semantic starting point."
+  ]
+}

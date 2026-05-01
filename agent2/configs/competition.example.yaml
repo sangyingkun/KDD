@@ -1,0 +1,27 @@
+dataset:
+  root_path: public/input
+
+run:
+  output_dir: artifacts/runs
+  run_id: ""
+  max_workers: 1
+  task_timeout_seconds: 600
+
+agent:
+  model: qwen3.6-35b-a3b
+  api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+  api_key: ""
+  embedding_enabled: true
+  embedding_model_name: BAAI/bge-m3
+  embedding_model_path: ""
+  embedding_dimension: 1024
+  embedding_device: cpu
+  embedding_batch_size: 16
+  embedding_local_files_only: true
+  embedding_query_prefix: ""
+  embedding_document_prefix: ""
+  max_steps: 32
+  temperature: 0.0
+  enable_function_calling: true
+  allow_text_fallback_when_tools_missing: true
+  max_semantic_retries: 1
